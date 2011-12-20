@@ -53,7 +53,13 @@
         summary_view_id=cZqm0N
   #+END_SRC
 
-  #+results:
+  Modules:
+
+  - Extract
+  - Dedupe
+  - Attach geo
+  - Attach validation
+  - UUID retention
 
 * TODO =yaml= to vineyard
   We're going to have a =.onStart=, =.onFinish=; yaml leaves specify

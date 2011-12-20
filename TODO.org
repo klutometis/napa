@@ -1,3 +1,64 @@
+* TODO Proof-of-concept
+  Chain two map-reduce tasks together. Vineyardize the tasks (without
+  napa).
+
+  Bogus wordcount example?
+
+  Capitalize, count.
+
+  Over hadoop.
+
+  Non-hadoop precondition: moves local file with noisy words to HDFS;
+  in hadoop: normalization (upper-case) and count.
+
+  Output: word to count mapping:
+
+  #+BEGIN_EXAMPLE
+    ASS 1
+    DONKEY 10
+  #+END_EXAMPLE
+
+  Validation: validating counters (name of counter, value),
+  hdfs-file-exists?, hdfs-file-empty?
+
+  #+BEGIN_SRC clojure
+    (defn hadoop-counter [counter-name]
+      ...)
+    
+    (defn call-with-hadoop-conditions [f]
+      (f *hadoop-conditions*))
+    
+    (defn non-zero-hadoop-conditions? []
+      (call-with-hadoop-conditions
+        (fn [hadoop-conditions]
+          (> (count hadoop-conditions) 0))))
+    
+    (if (non-zero-hadoop-conditions?)
+      (throw ...Exception))
+    
+    (defn get-hadoop-job [vineyard-task]
+      (...))
+    
+    (defn get-hadoop-counter [vineyard-task counter-name]
+      (...))
+    
+    (defn get-hadoop-property [vineyard-ask property-name]
+      (...))
+    
+    (> (get-hadoop-counter *vineyard-task* "foo") 0)
+    
+    (defn hdfs-file-exists? [vineyard-task path]
+      ;; Check for the existence of _SUCCESS.
+      (...))
+    
+    (hdfs-file-exists? *vineyard-task* "/path/to/dedupe")
+    
+    ;;; Inside pre-dedupe-analysis; path defaults to "/path/to/dedupe". In
+    ;;; other words, "does the default input path of my parent exist?"
+    (hdfs-file-parent-exists? *vineyard-task*)
+    
+  #+END_SRC
+
 * TODO Extract POC
   [[https://github.com/Factual/hadoop-extraction-workflow/blob/master/src/java/workflows/extract/poi/UnitedStatesExtraction.java][US-extraction]]; enumerated subtasks:
 
@@ -61,7 +122,53 @@
   - Attach validation
   - UUID retention
 
-  #+BEGIN_SRC yaml
+  #+BEGIN_SRC lisp
+    ;;; Grouping
+    (hadoop-extraction-workflow
+     (extract
+      ^{predecessors: (extract)}
+      (write-headers
+       compute-unique-inputs
+       convert-geocoding-results-to-tab
+       convert-validation-json-results-to-tab
+       write-uuid-retention-mapping-to-sequence-file
+       extract-entities
+       compute-sorted-unique-md5s
+       analyze-extracted-entities
+       post-process-extracted-data))
+     (dedupe
+      (pre-dedupe-analysis
+       pre-dedupe-analysis-summary
+       generate-likely-dupe-md5s
+       uniquify-likely-dupe-md5s
+       compute-dedupe-uuids
+       assign-uuids
+       group-deduped-entities
+       dedupe-qa
+       remove-junk-inputs-and-entities
+       perform-final-postprocessing))
+     (attach-geo
+      (assign-uuids-to-geocoding-results
+       combine-deduped-and-geocoding-data))
+     (attach-validation
+      (assign-uuids-to-validation-results
+       combine-dedupe-and-validation-data))
+     (uuid-retention
+      (compute-uuid-retention-mapping
+       remove-overfolding-retained-uuids
+       apply-uuid-retention-mapping
+       export-data
+       export-data-qa
+       uuid-retention-tracker)))
+    
+    ;;; Precedence
+    (dedupe (extract))
+    
+    ;;; Gantt charts
+    
+    (a
+     (b
+      (c d)))
     
   #+END_SRC
 

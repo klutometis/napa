@@ -1,0 +1,26 @@
+- a 
+- b
+- c
+- d
+
+a:
+  predecessors: b
+b:
+c:
+d:
+
+- extract
+  - writeHeaders
+    - a
+    - b
+    - c
+  - computeUniqueInputs
+  - extractEntities
+    - d
+    - e
+    - f
+    predecessors:
+      - computUniqueInputs
+      -
+    pre-conditions:
+      - ?

@@ -59,6 +59,9 @@
     
   #+END_SRC
 
+  [[http://wiki.corp.factual.com/display/INFRA/Vineyard+Java+Driver][Vineyard Java client]]. MapReduce jobs in Clojure? And pre-existing
+  code in Java.
+
 * TODO Extract POC
   [[https://github.com/Factual/hadoop-extraction-workflow/blob/master/src/java/workflows/extract/poi/UnitedStatesExtraction.java][US-extraction]]; enumerated subtasks:
 

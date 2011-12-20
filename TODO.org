@@ -1,0 +1,85 @@
+* TODO Extract POC
+  [[https://github.com/Factual/hadoop-extraction-workflow/blob/master/src/java/workflows/extract/poi/UnitedStatesExtraction.java][US-extraction]]; enumerated subtasks:
+
+  #+BEGIN_SRC java
+    List<mapreduce.Task> tasks =
+        Lists.newArrayList
+        (
+         writeHeaders,
+         computeUniqueInputs,
+         convertGeocodingResultsToTab,
+         convertValidationJsonResultsToTab,
+         writeUuidRetentionMappingToSequenceFile,
+         extractEntities,
+         computeSortedUniqueMd5s,
+         analyzeExtractedEntities,
+         postProcessExtractedData,
+         preDedupeAnalysis,
+         preDedupeAnalysisSummary,
+         generateLikelyDupeMd5s,
+         uniquifyLikelyDupeMd5s,
+         computeDedupeUuids,
+         assignUuids,
+         groupDedupedEntities,
+         dedupeQA,
+         removeJunkInputsAndEntities,
+         assignUuidsToValidationResults,
+         combineDedupedAndValidationData,
+         assignUuidsToGeocodingResults,
+         combineDedupedAndGeocodingData,
+         performFinalPostprocessing,
+    
+         computeUuidRetentionMapping,
+         removeOverfoldingRetainedUuids,
+         applyUuidRetentionMapping,
+    
+         exportData,
+         exportDataQA,
+    
+         uuidRetentionTracker
+         );
+    
+  #+END_SRC
+
+  [[http://d22.factual.com.:50075/browseDirectory.jsp?dir=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Foutput%2Fleo_uuid_test&namenodeInfoPort=50070&delegation=null][Output]].
+
+  #+BEGIN_SRC sh
+    sudo hadoop jar hadoop-extraction-workflow-hadoop.jar \
+        workflows.extract.poi.UnitedKingdomExtraction \
+        hadoop_config_file=conf/mapreduce/MapReduceRunner/n_cluster.properties \
+        extraction_config_class=extract.poi.UnitedKingdomScarecrow \
+        project_name=UK_scarecrow_extraction_test \
+        extraction_dataset_id=G4YzkQ \
+        summary_view_id=cZqm0N
+  #+END_SRC
+
+  #+results:
+
+* TODO =yaml= to vineyard
+  We're going to have a =.onStart=, =.onFinish=; yaml leaves specify
+  tasks. Have a predecessor thing:
+
+  #+BEGIN_EXAMPLE
+    iris
+      chrome plugin
+      nlp
+    api
+      places data
+      sugar
+    demo
+      webui (depends 1, 4)
+  #+END_EXAMPLE
+* Notes
+** Mon Dec 19 16:50:50 PST 2011   
+   - at the end of task: check succeeded (Vineyard task); it fails;
+     responsibility of the vineyard task to fail;
+   - takes YAML: turns into command-line options
+   - napa is the consumer that can run in daemon or cli mode (latter:
+     takes yaml file, presents
+   - name of the yaml file, config-argument
+   - folders of yaml files
+   - yaml files exist in scarecrow?
+   - yaml files served up by screws?
+   - composition of yaml-files?
+   - "this step is actually this file"
+

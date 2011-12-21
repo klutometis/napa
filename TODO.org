@@ -1,18 +1,70 @@
+* TODO [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
+  When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
+* TODO Attach-geocode POC
+  #+BEGIN_EXAMPLE
+    geocode-data(i3): /apps/extract/poi/UnitedKingdomScarecrow/input/geocode_data
+    md5-uuid-mapping(i2): /apps/extract/poi/UnitedKingdomScarecrow/output/split_test/014_compute_uuids
+    deduped_entities(i1): /apps/extract/poi/UnitedKingdomScarecrow/output/split_test/020_combined_deduped_and_validation_data
+  #+END_EXAMPLE
+
+  I.e. [[http://d22.factual.com.:50075/browseDirectory.jsp?dir=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Finput%2Fgeocode_data&namenodeInfoPort=50070&delegation=null][geocode_data]], [[http://d22.factual.com.:50075/browseDirectory.jsp?dir=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Foutput%2Fsplit_test%2F014_compute_uuids&namenodeInfoPort=50070&delegation=null][compute_uuids]], [[http://d22.factual.com.:50075/browseDirectory.jsp?dir=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Foutput%2Fsplit_test%2F022_combined_deduped_and_validation_and_geocoding_data&namenodeInfoPort=50070&delegation=null][combined_deduped_and_validation_data]].
+
+  [[https://github.com/Factual/back/blob/master/datastore-objects/src/main/thrift/factual_data_objects.thrift][Thrift-spec]]: payload and payloadRaw are JSON; [[https://github.com/Factual/back/blob/master/datastore-objects/src/main/java/com/factual/adaptors/Input.java][Wraps the input-data
+  object]]: i.e. parses the JSON, provides a map.
+
+  "Attach": append it to the array data-objects; eventually:
+  summarization merges the array of data-objects. Rules: mode, mean;
+  more complex rules, e.g. this came from that source and has a higher
+  score.
+
+  Tab-delimited data; sequence files: key-type, value-type.
+
+  uuid -> data; md5 -> uuid; md5 -> geodata; [[http://d11.factual.com:50075/browseBlock.jsp?blockId=-901183859042176514&blockSize=30109191&genstamp=13911775&filename=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Finput%2Fgeocode_data%2Fgeocode_data_2010_07_24&datanodePort=50010&namenodeInfoPort=50070&delegation=null][geodata]]. Represent the
+  data as JSON; propagate geodata back.
+
+  Generalized attachment: join, attach, summarize.
+
+  - Task 1 (non-Hadoop)
+    - Copy data to HDFS: comma-delimited md5-i -> uuid-i.
+    - Input :: local file
+    - Output :: md5->uuid (comma delimited)
+  - Task 2 (cascalog?)
+    - Convert output of task 1 to tab-delimited md5 -> uuid-i.
+    - Input :: md5->uuid (comma delimited)
+    - Output :: md5->uuid (tab delimited)
+  - Task 3 (straight-up Java?)
+    - Join task 2 with md5-i -> data-i, such that uuid-i -> data-i
+      (tab delimited).
+    - Input :: md5->uuid (tab delimited)
+    - Output :: uuid->data (tab delimited)
+
+  Simulates: non-Hadoop, Hadoop-transformation,
+  Hadoop-join. (Cf. [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][this]], by the way.)
 * TODO Spec
   If we have:
 
   #+BEGIN_SRC clojure
     (deftask b
       :children (c d e)
-      :dependencies a)
+      :dependencies (a))
   #+END_SRC
 
   I also want:
 
   #+BEGIN_SRC clojure
-    (make-task-tree! (a (b (c d e))))
+    (deftask a ...)
+    (deftask b ...)
+    (deftask c ...)
+    ...
     
-    (make-dependency-tree! (a (b)))
+    (make-task-tree!
+     (a
+      (b
+       (c d e))))
+    
+    (make-dependency-tree!
+     (a
+      (b)))
   #+END_SRC
 
   where tasks are created with the default settings, if they don't

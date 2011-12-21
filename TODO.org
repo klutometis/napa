@@ -1,3 +1,22 @@
+* TODO Spec
+  If we have:
+
+  #+BEGIN_SRC clojure
+    (deftask b
+      :children (c d e)
+      :dependencies a)
+  #+END_SRC
+
+  I also want:
+
+  #+BEGIN_SRC clojure
+    (make-task-tree! (a (b (c d e))))
+    
+    (make-dependency-tree! (a (b)))
+  #+END_SRC
+
+  where tasks are created with the default settings, if they don't
+  exist; possibly with a warning on stdout.
 * TODO Proof-of-concept
   Chain two map-reduce tasks together. Vineyardize the tasks (without
   napa).

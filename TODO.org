@@ -1,3 +1,14 @@
+* TODO cascalag.contrib
+  From Aaron:
+
+  #+BEGIN_QUOTE
+  Props to Chun for pointing this out. Has some striking parallels to
+  some of our requirements, so maybe a great source of inspiration for
+  syntax. http://sritchie.github.com/2011/11/15/introducing-cascalogcontrib.html
+                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  Notice for example there's an implicit naming convention for
+  specifying sub tasks that run in parallel, vs. in series.
+  #+END_QUOTE
 * TODO [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
   When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
 * TODO Attach-geocode POC

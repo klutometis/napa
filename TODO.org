@@ -1,4 +1,89 @@
-* TODO cascalag.contrib
+* TODO Example with clojure-hadoop
+  #+BEGIN_SRC clojure :tangle hadoop.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    
+  #+END_SRC
+* TODO Hadoop in beanshell?
+  #+BEGIN_SRC java :tangle hadoop.bsh :shebang #!/usr/bin/env bsh
+    addClassPath("lib/ant-1.6.5.jar");
+    addClassPath("lib/clojure-1.3.0.jar");
+    addClassPath("lib/clojure-contrib-1.2.0.jar");
+    addClassPath("lib/clojure-hadoop-1.3.1-20110417.030036-1.jar");
+    addClassPath("lib/commons-cli-1.2.jar");
+    addClassPath("lib/commons-codec-1.3.jar");
+    addClassPath("lib/commons-el-1.0.jar");
+    addClassPath("lib/commons-httpclient-3.0.1.jar");
+    addClassPath("lib/commons-logging-1.0.3.jar");
+    addClassPath("lib/commons-net-1.4.1.jar");
+    addClassPath("lib/core-3.1.1.jar");
+    addClassPath("lib/hadoop-core-0.20.2.jar");
+    addClassPath("lib/hsqldb-1.8.0.10.jar");
+    addClassPath("lib/jasper-compiler-5.5.12.jar");
+    addClassPath("lib/jasper-runtime-5.5.12.jar");
+    addClassPath("lib/jets3t-0.7.1.jar");
+    addClassPath("lib/jetty-6.1.14.jar");
+    addClassPath("lib/jetty-util-6.1.14.jar");
+    addClassPath("lib/jsp-2.1-6.1.14.jar");
+    addClassPath("lib/jsp-api-2.1-6.1.14.jar");
+    addClassPath("lib/junit-4.5.jar");
+    addClassPath("lib/kfs-0.3.jar");
+    addClassPath("lib/log4j-1.2.16.jar");
+    addClassPath("lib/oro-2.0.8.jar");
+    addClassPath("lib/servlet-api-2.5-6.1.14.jar");
+    addClassPath("lib/xmlenc-0.52.jar");
+    
+    import java.util.*;
+    
+    import org.apache.hadoop.fs.Path;
+    import org.apache.hadoop.mapred.*;
+    import org.apache.hadoop.conf.*;
+    import org.apache.hadoop.io.*;
+    import org.apache.hadoop.util.*;
+    
+    class Map extends MapReduceBase implements Mapper {
+        one = new IntWritable(1);
+        word = new Text();
+    
+        map(key, value, output, reporter) {
+            line = value.toString();
+            tokenizer = new StringTokenizer(line);
+            while (tokenizer.hasMoreTokens()) {
+                word.set(tokenizer.nextToken());
+                output.collect(word, one);
+            }
+        }
+    }
+    
+    class Reduce extends MapReduceBase implements Reducer {
+        reduce(key, values, output, reporter) {
+            int sum = 0;
+            while (values.hasNext()) {
+                sum += value.next().get();
+            }
+            output.collect(key, new IntWritable(sum));
+        }
+    }
+    
+    conf = new JobConf();
+    conf.setJobName("wordcount");
+    conf.setOutputKeyClass(Text.class);
+    conf.setOutputValueClass(IntWritable.class);
+    
+    conf.setMapperClass(Map.class);
+    conf.setCombinerClass(Reduce.class);
+    conf.setReducerClass(Reduce.class);
+    
+    conf.setInputFormat(TextInputFormat.class);
+    conf.setOutputFormat(TextOutputFormat.class);
+    
+    FileInputFormat.setInputPaths(conf, new Path("in"));
+    FileInputFormat.setOutputPath(conf, new Path("out"));
+    
+    JobClient.runJob(conf);
+    
+  #+END_SRC
+* TODO Analogy with cascalag-checkpoint
   From Aaron:
 
   #+BEGIN_QUOTE
@@ -9,6 +94,11 @@
   Notice for example there's an implicit naming convention for
   specifying sub tasks that run in parallel, vs. in series.
   #+END_QUOTE
+
+  I do like the symbolic temporary directories; Vineyard's going to
+  have to reap them appropriately, though.
+
+  Rebind =read= in someone else's namespace?
 * TODO [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
   When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
 * TODO Attach-geocode POC
@@ -51,6 +141,15 @@
 
   Simulates: non-Hadoop, Hadoop-transformation,
   Hadoop-join. (Cf. [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][this]], by the way.)
+
+  #+BEGIN_SRC sh :tangle md5-uuid.sh :shebang #!/usr/bin/env bash
+    n=${@:-5}
+    
+    for ((i = 0; i < n; i++)); do
+        echo $(echo -n $i | openssl md5 | cut -d ' ' -f 2),$i
+    done
+    
+  #+END_SRC
 * TODO Spec
   If we have:
 
@@ -285,3 +384,7 @@
    - composition of yaml-files?
    - "this step is actually this file"
 
+** Tue Dec 27 09:56:33 PST 2011
+   - command-line stuff: automatically parse the yaml: populate
+     command line opts
+   - workflow definition language

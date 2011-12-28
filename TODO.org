@@ -196,44 +196,116 @@
     
   #+END_SRC
 
-  #+BEGIN_SRC java :tangle TransformMD5s.java
+  #+BEGIN_SRC java :tangle MD5TabDelimiter.java
     import java.io.IOException;
     
-    import org.apache.hadoo.fs.Path;
-    import org.apache.hadoo.mapred.*;
-    import org.apache.hadoo.conf.*;
-    import org.apache.hadoo.io.*;
-    import org.apache.hadoo.util.*;
+    import org.apache.hadoop.fs.Path;
+    import org.apache.hadoop.mapred.*;
+    import org.apache.hadoop.mapred.lib.*;
+    import org.apache.hadoop.conf.*;
+    import org.apache.hadoop.io.*;
+    import org.apache.hadoop.util.*;
     
-    public class TransformMD5s {
-        public class TextArrayWritable extends ArrayWritable {
-            public TextArrayWritable() {
-                super(Text.class);
-            };
-        }
-    
-        public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, LongWritable, TextArrayWritable> {
-            public void map(LongWritable key, Text MD5ToUUID, OutputCollector<Text, Text> output, Reporter reporter)
+    public class MD5TabDelimiter {
+        public static class Map extends MapReduceBase
+            implements Mapper<LongWritable, Text, Text, NullWritable> {
+            public void map(LongWritable key,
+                            Text MD5ToUUID,
+                            OutputCollector<Text, NullWritable> output,
+                            Reporter reporter)
                 throws IOException {
-                String[] MD5AndUUID = value.toString().split(",");
-                output.collect(key, new TextArrayWritable[] {
-                        new Text(MD5AndUUID[0]),
-                        new Text(MD5AndUUID[1])
-                    });
+                String[] MD5AndUUID = MD5ToUUID.toString().split(",");
+                output.collect(new Text(String.format("%s\t%s",
+                                                      MD5AndUUID[0],
+                                                      MD5AndUUID[1])),
+                               NullWritable.get());
             }
         }
     
-        public static class Reduce extends MapReduceBase implements Reducer<Text, Text, Text, Text> {
-            public void reduce(LongWritable key, Iterator<TextArrayWritable> MD5ToUUIDs, OutputCollector<Text, Text> output, Reporter reporter)
-                throws IOException {
-                if (values.hasNext()) {
-                    output.collect(String.format("%s\t%s", values.next()));
-                }
-            }
+        public static void main(String[] argv) throws IOException {
+            JobConf conf = new JobConf(MD5TabDelimiter.class);
+            conf.setJobName("tab-delimit-md5s");
+            conf.setOutputKeyClass(Text.class);
+            conf.setOutputValueClass(NullWritable.class);
+            conf.setMapperClass(Map.class);
+            conf.setReducerClass(IdentityReducer.class);
+            conf.setInputFormat(TextInputFormat.class);
+            conf.setOutputFormat(TextOutputFormat.class);
+            FileInputFormat.setInputPaths(conf, new Path("comma-delimited-md5s"));
+            FileOutputFormat.setOutputPath(conf, new Path("tab-delimited-md5s"));
+            JobClient.runJob(conf);
         }
     }
     
   #+END_SRC
+
+  #+BEGIN_SRC sh :tangle tab-delimit-md5s.sh :shebang #!/usr/bin/env bash
+    org-tangle TODO.org && \
+        rm -frv tab-delimited-md5s && \
+        mkdir -v MD5TabDelimiter-classes;
+    
+    javac -cp $(hadoop classpath) -d MD5TabDelimiter-classes MD5TabDelimiter.java && \
+        jar -cvf MD5TabDelimiter.jar -C MD5TabDelimiter-classes . && \
+        hadoop jar MD5TabDelimiter.jar MD5TabDelimiter && \
+        hadoop fs -cat tab-delimited-md5s/*
+    
+  #+END_SRC
+
+  #+BEGIN_SRC java :tangle DataAttacher.java
+    import java.io.IOException;
+    
+    import org.apache.hadoop.fs.Path;
+    import org.apache.hadoop.mapred.*;
+    import org.apache.hadoop.mapred.lib.*;
+    import org.apache.hadoop.conf.*;
+    import org.apache.hadoop.io.*;
+    import org.apache.hadoop.util.*;
+    
+    public class DataAttacher {
+        public static class Map extends MapReduceBase
+            implements Mapper<LongWritable, Text, Text, Text> {
+            public void map(LongWritable key,
+                            Text MD5ToUUID,
+                            OutputCollector<Text, Text> output,
+                            Reporter reporter)
+                throws IOException {
+                String[] MD5AndUUID = MD5ToUUID.toString().split("\t");
+                String UUID = MD5AndUUID[1];
+                output.collect(new Text(UUID),
+                               new Text(String.format("{ \"UUID\": \"%s\" }",
+                                                      UUID)));
+            }
+        }
+    
+        public static void main(String[] argv) throws IOException {
+            JobConf conf = new JobConf(DataAttacher.class);
+            conf.setJobName("attach-data");
+            conf.setOutputKeyClass(Text.class);
+            conf.setOutputValueClass(Text.class);
+            conf.setMapperClass(Map.class);
+            conf.setReducerClass(IdentityReducer.class);
+            conf.setInputFormat(TextInputFormat.class);
+            conf.setOutputFormat(TextOutputFormat.class);
+            FileInputFormat.setInputPaths(conf, new Path("tab-delimited-md5s"));
+            FileOutputFormat.setOutputPath(conf, new Path("attached-data"));
+            JobClient.runJob(conf);
+        }
+    }
+    
+  #+END_SRC
+
+  #+BEGIN_SRC sh :tangle attach-data.sh :shebang #!/usr/bin/env bash
+    org-tangle TODO.org && \
+        rm -frv attached-data && \
+        mkdir -v DataAttacher-classes;
+    
+    javac -cp $(hadoop classpath) -d DataAttacher-classes DataAttacher.java && \
+        jar -cvf DataAttacher.jar -C DataAttacher-classes . && \
+        hadoop jar DataAttacher.jar DataAttacher && \
+        hadoop fs -cat attached-data/*
+    
+  #+END_SRC
+
 * TODO Spec
   If we have:
 

@@ -196,7 +196,7 @@
     
   #+END_SRC
 
-  #+BEGIN_SRC java :tangle MD5TabDelimiter.java
+  #+BEGIN_SRC java :tangle UUIDToMD5Mapper.java
     import java.io.IOException;
     
     import org.apache.hadoop.fs.Path;
@@ -206,7 +206,7 @@
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
     
-    public class MD5TabDelimiter {
+    public class UUIDToMD5Mapper {
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, NullWritable> {
             public void map(LongWritable key,
@@ -223,35 +223,35 @@
         }
     
         public static void main(String[] argv) throws IOException {
-            JobConf conf = new JobConf(MD5TabDelimiter.class);
-            conf.setJobName("tab-delimit-md5s");
+            JobConf conf = new JobConf(UUIDToMD5Mapper.class);
+            conf.setJobName("map-uuid-to-md5");
             conf.setOutputKeyClass(Text.class);
             conf.setOutputValueClass(NullWritable.class);
             conf.setMapperClass(Map.class);
             conf.setReducerClass(IdentityReducer.class);
             conf.setInputFormat(TextInputFormat.class);
             conf.setOutputFormat(TextOutputFormat.class);
-            FileInputFormat.setInputPaths(conf, new Path("comma-delimited-md5s"));
-            FileOutputFormat.setOutputPath(conf, new Path("tab-delimited-md5s"));
+            FileInputFormat.setInputPaths(conf, new Path("md5-to-uuid"));
+            FileOutputFormat.setOutputPath(conf, new Path("uuid-to-md5"));
             JobClient.runJob(conf);
         }
     }
     
   #+END_SRC
 
-  #+BEGIN_SRC sh :tangle tab-delimit-md5s.sh :shebang #!/usr/bin/env bash
+  #+BEGIN_SRC sh :tangle map-uuid-to-md5.sh :shebang #!/usr/bin/env bash
     org-tangle TODO.org && \
-        rm -frv tab-delimited-md5s && \
-        mkdir -v MD5TabDelimiter-classes;
+        rm -frv uuid-to-md5 && \
+        mkdir -v UUIDToMD5Mapper-classes;
     
-    javac -cp $(hadoop classpath) -d MD5TabDelimiter-classes MD5TabDelimiter.java && \
-        jar -cvf MD5TabDelimiter.jar -C MD5TabDelimiter-classes . && \
-        hadoop jar MD5TabDelimiter.jar MD5TabDelimiter && \
-        hadoop fs -cat tab-delimited-md5s/*
+    javac -cp $(hadoop classpath) -d UUIDToMD5Mapper-classes UUIDToMD5Mapper.java && \
+        jar -cvf UUIDToMD5Mapper.jar -C UUIDToMD5Mapper-classes . && \
+        hadoop jar UUIDToMD5Mapper.jar UUIDToMD5Mapper && \
+        hadoop fs -cat uuid-to-md5/*
     
   #+END_SRC
 
-  #+BEGIN_SRC java :tangle DataAttacher.java
+  #+BEGIN_SRC java :tangle UUIDToPayloadMapper.java
     import java.io.IOException;
     
     import org.apache.hadoop.fs.Path;
@@ -261,7 +261,7 @@
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
     
-    public class DataAttacher {
+    public class UUIDToPayloadMapper {
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
@@ -279,32 +279,42 @@
     
         public static void main(String[] argv) throws IOException {
             JobConf conf = new JobConf(DataAttacher.class);
-            conf.setJobName("attach-data");
+            conf.setJobName("map-uuid-to-payload");
             conf.setOutputKeyClass(Text.class);
             conf.setOutputValueClass(Text.class);
             conf.setMapperClass(Map.class);
             conf.setReducerClass(IdentityReducer.class);
             conf.setInputFormat(TextInputFormat.class);
             conf.setOutputFormat(TextOutputFormat.class);
-            FileInputFormat.setInputPaths(conf, new Path("tab-delimited-md5s"));
-            FileOutputFormat.setOutputPath(conf, new Path("attached-data"));
+            FileInputFormat.setInputPaths(conf, new Path("md5-to-uuid"));
+            FileOutputFormat.setOutputPath(conf, new Path("uuid-to-payload"));
             JobClient.runJob(conf);
         }
     }
     
   #+END_SRC
 
-  #+BEGIN_SRC sh :tangle attach-data.sh :shebang #!/usr/bin/env bash
+  #+BEGIN_SRC sh :tangle map-uuid-to-payload.sh :shebang #!/usr/bin/env bash
     org-tangle TODO.org && \
-        rm -frv attached-data && \
-        mkdir -v DataAttacher-classes;
+        rm -frv uuid-to-payload && \
+        mkdir -v UUIDToPayloadMapper-classes;
     
-    javac -cp $(hadoop classpath) -d DataAttacher-classes DataAttacher.java && \
-        jar -cvf DataAttacher.jar -C DataAttacher-classes . && \
-        hadoop jar DataAttacher.jar DataAttacher && \
-        hadoop fs -cat attached-data/*
+    javac -cp $(hadoop classpath) -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
+        jar -cvf UUIDToPayloadMapper.jar -C UUIDToPayloadMapper-classes . && \
+        hadoop jar UUIDToPayloadMapper.jar UUIDToPayloadMapper && \
+        hadoop fs -cat uuid-to-payload/*
     
   #+END_SRC
+
+  Swap it: "UUID\tMD5" after the first job; input to the second job:
+  tab-delimited values and the simulated payload; when reducing during
+  the second job, should see UUID -> (md5, payload)?
+
+  Output of second job: combine the md5 and payload (i.e. insert md5
+  into payload).
+
+  Using sequence-files instead of text-files should give me key-value
+  pairs (and obviate the need for destructuring the tab).
 
 * TODO Spec
   If we have:

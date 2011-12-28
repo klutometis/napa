@@ -195,6 +195,45 @@
         (println (format "%s\t%s" uuid (json-str {:uuid uuid})))))
     
   #+END_SRC
+
+  #+BEGIN_SRC java :tangle TransformMD5s.java
+    import java.io.IOException;
+    
+    import org.apache.hadoo.fs.Path;
+    import org.apache.hadoo.mapred.*;
+    import org.apache.hadoo.conf.*;
+    import org.apache.hadoo.io.*;
+    import org.apache.hadoo.util.*;
+    
+    public class TransformMD5s {
+        public class TextArrayWritable extends ArrayWritable {
+            public TextArrayWritable() {
+                super(Text.class);
+            };
+        }
+    
+        public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, LongWritable, TextArrayWritable> {
+            public void map(LongWritable key, Text MD5ToUUID, OutputCollector<Text, Text> output, Reporter reporter)
+                throws IOException {
+                String[] MD5AndUUID = value.toString().split(",");
+                output.collect(key, new TextArrayWritable[] {
+                        new Text(MD5AndUUID[0]),
+                        new Text(MD5AndUUID[1])
+                    });
+            }
+        }
+    
+        public static class Reduce extends MapReduceBase implements Reducer<Text, Text, Text, Text> {
+            public void reduce(LongWritable key, Iterator<TextArrayWritable> MD5ToUUIDs, OutputCollector<Text, Text> output, Reporter reporter)
+                throws IOException {
+                if (values.hasNext()) {
+                    output.collect(String.format("%s\t%s", values.next()));
+                }
+            }
+        }
+    }
+    
+  #+END_SRC
 * TODO Spec
   If we have:
 

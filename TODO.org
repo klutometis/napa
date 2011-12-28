@@ -1,3 +1,19 @@
+* TODO Run the POC.
+  #+BEGIN_SRC sh :tangle run.sh :shebang #!/usr/bin/env bash
+    rm -frv /tmp/wirklich && \
+        cd ~/prg/clj/napa && \
+        lein clean && \
+        lein jar && \
+        java -cp napa-1.0.0-SNAPSHOT.jar:/tmp/clojure-hadoop-new/clojure-hadoop-1.3.1-SNAPSHOT-standalone.jar \
+          clojure_hadoop.job \
+          -job napa.core/job \
+          -input md5-uuid.txt \
+          -output /tmp/wirklich && \
+        java -cp /tmp/clojure-hadoop-new/clojure-hadoop-1.3.1-SNAPSHOT-standalone.jar \
+          org.apache.hadoop.fs.FsShell \
+          -text /tmp/wirklich/part-r-00000
+    
+  #+END_SRC
 * TODO Example with clojure-hadoop
   #+BEGIN_SRC clojure :tangle hadoop.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
@@ -148,6 +164,35 @@
     for ((i = 0; i < n; i++)); do
         echo $(echo -n $i | openssl md5 | cut -d ' ' -f 2),$i
     done
+    
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle md5-uuid.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    (use 'debug.core)
+    (use 'clojure.java.io)
+    (use 'clojure.string)
+    
+    (doseq [line (line-seq (reader "md5-uuid.txt"))]
+      (let [[md5 uuid] (split line #",")]
+        (println (format "%s\t%s" md5 uuid))))
+    
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle uuid-data.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    (use 'debug.core)
+    (use 'clojure.java.io)
+    (use 'clojure.string)
+    (use 'clojure.data.json)
+    
+    (doseq [line (line-seq (reader *in*))]
+      (let [[md5 uuid] (split line #"\t")]
+        (println (format "%s\t%s" uuid (json-str {:uuid uuid})))))
     
   #+END_SRC
 * TODO Spec

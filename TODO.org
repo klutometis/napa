@@ -208,17 +208,15 @@
     
     public class UUIDToMD5Mapper {
         public static class Map extends MapReduceBase
-            implements Mapper<LongWritable, Text, Text, NullWritable> {
+            implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
                             Text MD5ToUUID,
-                            OutputCollector<Text, NullWritable> output,
+                            OutputCollector<Text, Text> output,
                             Reporter reporter)
                 throws IOException {
                 String[] MD5AndUUID = MD5ToUUID.toString().split(",");
-                output.collect(new Text(String.format("%s\t%s",
-                                                      MD5AndUUID[0],
-                                                      MD5AndUUID[1])),
-                               NullWritable.get());
+                output.collect(new Text(MD5AndUUID[0]),
+                               new Text(MD5AndUUID[1]));
             }
         }
     
@@ -226,11 +224,12 @@
             JobConf conf = new JobConf(UUIDToMD5Mapper.class);
             conf.setJobName("map-uuid-to-md5");
             conf.setOutputKeyClass(Text.class);
-            conf.setOutputValueClass(NullWritable.class);
+            conf.setOutputValueClass(Text.class);
             conf.setMapperClass(Map.class);
             conf.setReducerClass(IdentityReducer.class);
             conf.setInputFormat(TextInputFormat.class);
-            conf.setOutputFormat(TextOutputFormat.class);
+            // conf.setOutputFormat(TextOutputFormat.class);
+            conf.setOutputFormat(SequenceFileOutputFormat.class);
             FileInputFormat.setInputPaths(conf, new Path("md5-to-uuid"));
             FileOutputFormat.setOutputPath(conf, new Path("uuid-to-md5"));
             JobClient.runJob(conf);
@@ -269,7 +268,7 @@
                             OutputCollector<Text, Text> output,
                             Reporter reporter)
                 throws IOException {
-                String[] MD5AndUUID = MD5ToUUID.toString().split("\t");
+                String[] MD5AndUUID = MD5ToUUID.toString().split(",");
                 String UUID = MD5AndUUID[1];
                 output.collect(new Text(UUID),
                                new Text(String.format("{ \"UUID\": \"%s\" }",
@@ -278,14 +277,15 @@
         }
     
         public static void main(String[] argv) throws IOException {
-            JobConf conf = new JobConf(DataAttacher.class);
+            JobConf conf = new JobConf(UUIDToPayloadMapper.class);
             conf.setJobName("map-uuid-to-payload");
             conf.setOutputKeyClass(Text.class);
             conf.setOutputValueClass(Text.class);
             conf.setMapperClass(Map.class);
             conf.setReducerClass(IdentityReducer.class);
             conf.setInputFormat(TextInputFormat.class);
-            conf.setOutputFormat(TextOutputFormat.class);
+            // conf.setOutputFormat(TextOutputFormat.class);
+            conf.setOutputFormat(SequenceFileOutputFormat.class);
             FileInputFormat.setInputPaths(conf, new Path("md5-to-uuid"));
             FileOutputFormat.setOutputPath(conf, new Path("uuid-to-payload"));
             JobClient.runJob(conf);

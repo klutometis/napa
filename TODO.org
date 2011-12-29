@@ -205,8 +205,18 @@
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
+    import com.google.gson.Gson;
     
     public class UUIDToMD5Mapper {
+        static Gson gson = new Gson();
+    
+        static class MD5 {
+            String md5;
+    
+            MD5(String md5) {
+                this.md5 = md5;
+            }
+        }
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
@@ -217,7 +227,7 @@
                 String[] MD5AndUUID = MD5ToUUID.toString().split(",");
                 String MD5 = MD5AndUUID[0];
                 String UUID = MD5AndUUID[1];
-                output.collect(new Text(MD5), new Text(UUID));
+                output.collect(new Text(UUID), new Text(gson.toJson(new MD5(MD5))));
             }
         }
     
@@ -244,7 +254,8 @@
         rm -frv uuid-to-md5 && \
         mkdir -v UUIDToMD5Mapper-classes;
     
-    javac -cp $(hadoop classpath) -d UUIDToMD5Mapper-classes UUIDToMD5Mapper.java && \
+    javac -cp $(hadoop classpath):lib/* -d UUIDToMD5Mapper-classes UUIDToMD5Mapper.java && \
+        yes | unzip -d UUIDToMD5Mapper-classes lib/gson-*.jar &&
         jar -cvf UUIDToMD5Mapper.jar -C UUIDToMD5Mapper-classes . && \
         hadoop jar UUIDToMD5Mapper.jar UUIDToMD5Mapper && \
         hadoop fs -cat uuid-to-md5/*
@@ -282,6 +293,8 @@
                 throws IOException {
                 String[] MD5AndUUID = MD5ToUUID.toString().split(",");
                 UUID uuid = new UUID(MD5AndUUID[1]);
+                System.out.println(new Text(uuid.uuid).toString() +
+                                   new Text(gson.toJson(uuid)).toString());
                 output.collect(new Text(uuid.uuid),
                                new Text(gson.toJson(uuid)));
             }
@@ -310,7 +323,8 @@
         rm -frv uuid-to-payload && \
         mkdir -v UUIDToPayloadMapper-classes;
     
-    javac -cp $(hadoop classpath):classes -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
+    javac -cp $(hadoop classpath):lib/* -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
+        yes | unzip -d UUIDToPayloadMapper-classes lib/gson-*.jar &&
         jar -cvf UUIDToPayloadMapper.jar -C UUIDToPayloadMapper-classes . && \
         hadoop jar UUIDToPayloadMapper.jar UUIDToPayloadMapper && \
         hadoop fs -cat uuid-to-payload/*

@@ -215,8 +215,9 @@
                             Reporter reporter)
                 throws IOException {
                 String[] MD5AndUUID = MD5ToUUID.toString().split(",");
-                output.collect(new Text(MD5AndUUID[0]),
-                               new Text(MD5AndUUID[1]));
+                String MD5 = MD5AndUUID[0];
+                String UUID = MD5AndUUID[1];
+                output.collect(new Text(MD5), new Text(UUID));
             }
         }
     
@@ -259,8 +260,19 @@
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
+    import com.google.gson.Gson;
     
     public class UUIDToPayloadMapper {
+        static Gson gson = new Gson();
+    
+        static class UUID {
+            String uuid;
+    
+            UUID(String uuid) {
+                this.uuid = uuid;
+            }
+        }
+    
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
@@ -269,10 +281,9 @@
                             Reporter reporter)
                 throws IOException {
                 String[] MD5AndUUID = MD5ToUUID.toString().split(",");
-                String UUID = MD5AndUUID[1];
-                output.collect(new Text(UUID),
-                               new Text(String.format("{ \"UUID\": \"%s\" }",
-                                                      UUID)));
+                UUID uuid = new UUID(MD5AndUUID[1]);
+                output.collect(new Text(uuid.uuid),
+                               new Text(gson.toJson(uuid)));
             }
         }
     
@@ -299,7 +310,7 @@
         rm -frv uuid-to-payload && \
         mkdir -v UUIDToPayloadMapper-classes;
     
-    javac -cp $(hadoop classpath) -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
+    javac -cp $(hadoop classpath):classes -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
         jar -cvf UUIDToPayloadMapper.jar -C UUIDToPayloadMapper-classes . && \
         hadoop jar UUIDToPayloadMapper.jar UUIDToPayloadMapper && \
         hadoop fs -cat uuid-to-payload/*
@@ -315,6 +326,84 @@
 
   Using sequence-files instead of text-files should give me key-value
   pairs (and obviate the need for destructuring the tab).
+
+  #+BEGIN_SRC java :tangle MD5AndPayloadJoiner.java
+    import java.io.IOException;
+    import java.util.*;
+    
+    import org.apache.commons.logging.Log;
+    import org.apache.commons.logging.LogFactory;
+    
+    import org.apache.hadoop.fs.Path;
+    import org.apache.hadoop.mapred.*;
+    import org.apache.hadoop.mapred.lib.*;
+    import org.apache.hadoop.conf.*;
+    import org.apache.hadoop.io.*;
+    import org.apache.hadoop.util.*;
+    
+    public class MD5AndPayloadJoiner {
+        static Log log = LogFactory.getLog(MD5AndPayloadJoiner.class);
+    
+        public static class Map extends MapReduceBase
+            implements Mapper<Text, Text, Text, Text> {
+            public void map(Text UUID,
+                            Text NotSure,
+                            OutputCollector<Text, Text> output,
+                            Reporter reporter)
+                throws IOException {
+                System.out.println("************************" + UUID.toString() + NotSure.toString());
+                // String[] MD5AndUUID = MD5ToUUID.toString().split(",");
+                // String UUID = MD5AndUUID[1];
+                // output.collect(new Text(UUID),
+                //                new Text(String.format("{ \"UUID\": \"%s\" }",
+                //                                       UUID)));
+            }
+        }
+    
+        public static class Reduce extends MapReduceBase
+            implements Reducer<Text, Text, Text, Text> {
+            public void reduce(Text key,
+                               Iterator<Text> values,
+                               OutputCollector<Text, Text> output,
+                               Reporter reporter)
+                throws IOException {
+                while (values.hasNext()) {
+                    System.out.println("value: " + values.next());
+                }
+                System.out.println("key: " + key);
+            }
+        }
+    
+        public static void main(String[] argv) throws IOException {
+            JobConf conf = new JobConf(MD5AndPayloadJoiner.class);
+            conf.setJobName("map-uuid-to-payload");
+            conf.setOutputKeyClass(Text.class);
+            conf.setOutputValueClass(Text.class);
+            conf.setMapperClass(IdentityMapper.class);
+            conf.setReducerClass(Reduce.class);
+            conf.setInputFormat(SequenceFileInputFormat.class);
+            conf.setOutputFormat(TextOutputFormat.class);
+            // conf.setOutputFormat(SequenceFileOutputFormat.class);
+            FileInputFormat.addInputPath(conf, new Path("uuid-to-md5"));
+            FileInputFormat.addInputPath(conf, new Path("uuid-to-payload"));
+            FileOutputFormat.setOutputPath(conf, new Path("md5-and-payload"));
+            JobClient.runJob(conf);
+        }
+    }
+    
+  #+END_SRC
+
+  #+BEGIN_SRC sh :tangle join-md5-and-payload.sh :shebang #!/usr/bin/env bash
+    org-tangle TODO.org && \
+        rm -frv md5-and-payload && \
+        mkdir -v MD5AndPayloadJoiner-classes;
+    
+    javac -cp $(hadoop classpath):classes -d MD5AndPayloadJoiner-classes MD5AndPayloadJoiner.java && \
+        jar -cvf MD5AndPayloadJoiner.jar -C MD5AndPayloadJoiner-classes . && \
+        hadoop jar MD5AndPayloadJoiner.jar MD5AndPayloadJoiner && \
+        hadoop fs -cat md5-and-payload/*
+    
+  #+END_SRC
 
 * TODO Spec
   If we have:

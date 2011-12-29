@@ -158,12 +158,12 @@
   Simulates: non-Hadoop, Hadoop-transformation,
   Hadoop-join. (Cf. [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][this]], by the way.)
 
-  #+BEGIN_SRC sh :tangle md5-uuid.sh :shebang #!/usr/bin/env bash
-    n=${@:-5}
+  #+BEGIN_SRC sh :tangle make-md5-to-uuid.sh :shebang #!/usr/bin/env bash
+    n=${@:-100}
     
     for ((i = 0; i < n; i++)); do
         echo $(echo -n $i | openssl md5 | cut -d ' ' -f 2),$i
-    done
+    done > md5-to-uuid
     
   #+END_SRC
 

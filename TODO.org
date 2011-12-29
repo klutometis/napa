@@ -382,6 +382,11 @@
     
   #+END_SRC
 
+  - https://github.com/Factual/vineyard/blob/master/hadoop/src/main/java/vineyard/hadoop/demojob/WordCounter.java
+  - https://github.com/Factual/vineyard/blob/master/hadoop/pom.xml
+  - http://wiki.corp.factual.com/display/ENG/Internal+Maven+Proxy+Repository
+  - https://github.com/Factual/vineyard/blob/master/hadoop/src/test/java/vineyard/hadoop/Producer.java
+
 * TODO Spec
   If we have:
 

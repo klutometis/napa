@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -13,9 +14,9 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
-import vineyard.hadoop.Vineyardized;
+import vineyard.hadoop.MapReduceJobCreator;
 
-public class UUIDToPayloadMapper implements Vineyardized {
+public class UUIDToPayloadMapper implements MapReduceJobCreator {
 
     public static class Map extends Mapper<LongWritable, Text, Text, Text> {
         public void map(LongWritable key,
@@ -31,9 +32,9 @@ public class UUIDToPayloadMapper implements Vineyardized {
         }
     }
 
-    public Job createJob(java.util.Map<String, String> properties) {
+    public Job createJob(Configuration conf) {
         try {
-            Job job = new Job();
+            Job job = new Job(conf);
             job.setJobName("map-uuid-to-payload");
             job.setJarByClass(UUIDToPayloadMapper.class);
 
@@ -47,9 +48,9 @@ public class UUIDToPayloadMapper implements Vineyardized {
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
             FileInputFormat.setInputPaths
-                (job, new Path(properties.get("input_path")));
+                (job, new Path(conf.get("input_path")));
             FileOutputFormat.setOutputPath
-                (job, new Path(properties.get("output_path")));
+                (job, new Path(conf.get("output_path")));
 
             return job;
         } catch (IOException e) {

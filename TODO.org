@@ -7,8 +7,12 @@
   #+BEGIN_SRC clojure
     (load-file "othertoy.clj")
     
+    (defn def-task [class init-data]
+      (doto (new class)
+        (set-init-data)))
+    
     (defn def-hadoop-task []
-      (doto (MapReduceTask.)))
+      (def-task MapReduceTask {:blah "blah"}))
     
     (defn def-shell-task [command]
       )
@@ -106,6 +110,31 @@
 
   And thence: [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/Diagram.java#L894][diagram.getShapeIterator]]; also [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/DiagramShape.java#L500][shape.getEdges]]; also
   [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L149][edge.getOwner]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][shape.getEndPoint]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][edge.getStartPoint]].
+
+  #+BEGIN_SRC clojure
+    (import '(hewtoy UUIDToMD5Mapper
+                     UUIDToMD5Mapper
+                     MD5AndPayloadJoiner))
+    
+    (shell-task make-uuid-md5s "md5-uuid.sh")
+    (map-reduce-task map-uuid-to-md5 UUIDToMD5Mapper)
+    (map-reduce-task map-uuid-to-payload UUIDToMD5Mapper)
+    (map-reduce-task join-md5-and-payload MD5AndPayloadJoiner)
+    
+    (dependencies
+     (join-md5-and-payload
+      ((map-uuid-to-md5
+        (make-uuid-md5s))
+       (map-uuid-to-payload
+        (make-uuid-md5s)))))
+    
+    (dependencies join-md5-and-payload
+                  (map-uuid-to-md5 make-uuid-md5s)
+                  (map-uuid-to-payload make-uuid-md5s))
+    
+    (root join-md5-and-payload)
+    
+  #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_EXAMPLE

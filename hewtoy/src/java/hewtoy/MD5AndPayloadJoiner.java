@@ -6,6 +6,7 @@ import java.util.Iterator;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -13,10 +14,12 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-public class MD5AndPayloadJoiner {
+import vineyard.hadoop.MapReduceJobCreator;
+
+public class MD5AndPayloadJoiner implements MapReduceJobCreator {
     public static class Reduce extends Reducer<Text, Text, Text, Text> {
         public void reduce(Text UUID,
                            Iterator<Text> values,
@@ -30,8 +33,7 @@ public class MD5AndPayloadJoiner {
         }
     }
 
-    public Job createJob(java.util.Map<String, String> properties)
-        throws IOException {
+    public Job createJob(Configuration conf) {
         try {
             Job job = new Job();
             job.setJobName("map-uuid-to-payload");

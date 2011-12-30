@@ -47,7 +47,67 @@
   java-interop;
 
   Draw dependency graphs: napa or vineyard?
-* TODO Attach-geocode POC
+
+  We need to distinguish between different classes of tasks: there's
+  vanilla Vineyard tasks, but also shell-tasks, hadoop-tasks.
+
+  General pattern: instantiate some nullary constructor; specify
+  initData.
+
+  Clojure driver based on the [[https://github.com/Factual/vineyard-java-driver][Java driver]].
+
+  Two axes: dependency vs. predecessorship; expressed independently,
+  too. See [[http://en.wikipedia.org/wiki/Tree_(graph_theory)#Definitions][this]], by the way:
+
+  #+BEGIN_QUOTE
+  An ordered tree or plane tree is a rooted tree for which an ordering
+  is specified for the children of each vertex.
+  #+END_QUOTE
+
+  Also:
+
+  #+BEGIN_QUOTE
+  The term hedge sometimes refers to an ordered sequence of trees.
+  #+END_QUOTE
+
+  Are we dealing with a partially ordered tree? Where ordering
+  expresses synchronicity (sequence).
+
+  Generic =make-task= interface with a class and an init-data map;
+  gets specialized into =make-hadoop-task= (or, alternatively,
+  =task=), =make-shell-task= (=shell-task=), &c.
+
+  =task=, =hadoop-task= (=map-reduce-task=, for that matter),
+  =shell-task= are good if we're going declaritive; =dependency-graph=
+  (or simply =dependencies=), furthermore; as well as
+  =predecessor-graph= (or simply =predecessors=).[fn:: We'd only need
+  to specify =-graph= is there was some meaningful distinction, such
+  as e.g. =-tree=?] (How to visually express dependency and
+  predecessorship in the same graph, by the way: differently colored
+  links? Two graphs? Numbers?)
+
+  Also, the Clojure metadata stuff is pretty ugly; different mechanism
+  for specifying the init-data?
+
+  See [[http://en.wikipedia.org/wiki/Dataflow_programming][dataflow-programming]]; [[http://stackoverflow.com/questions/4565158/using-clojure-dataflow-programming-idioms][in Clojure]]; [[http://richhickey.github.com/clojure-contrib/dataflow-api.html][API]]. [[http://upload.wikimedia.org/wikipedia/en/3/33/FBP_3_block_diagram.jpg][Block diagramm]].
+
+  [[http://ditaa.sourceforge.net/][ditaa]] is what I'm talking about: parse it and input it. [[https://github.com/stathissideris/ditaa][Source]]. Take
+  a look at [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/core/CommandLineConverter.java#L222][this]]; basically:
+
+  #+BEGIN_SRC java
+    TextGrid grid = new TextGrid();
+    grid.loadFrom(fromFilename, options.processingOptions);
+    Diagram diagram = new Diagram(grid, options);
+    
+    // Don't need the following if we're just parsing the file.
+    RenderedImage image = new BitmapRenderer().renderToImage(diagram, options.renderingOptions);
+    ImageIO.write(image, "png", os);
+  #+END_SRC
+
+  And thence: [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/Diagram.java#L894][diagram.getShapeIterator]]; also [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/DiagramShape.java#L500][shape.getEdges]]; also
+  [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L149][edge.getOwner]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][shape.getEndPoint]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][edge.getStartPoint]].
+* DONE Attach-geocode POC
+  CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_EXAMPLE
     geocode-data(i3): /apps/extract/poi/UnitedKingdomScarecrow/input/geocode_data
     md5-uuid-mapping(i2): /apps/extract/poi/UnitedKingdomScarecrow/output/split_test/014_compute_uuids
@@ -325,7 +385,8 @@
     https://github.com/technomancy/leiningen/issues/31
 
     (defjob map-uuid-to-md5 hewtoy/UUIDToMd5Mapper)
-* TODO Run the POC.
+* CANCELED Run the POC.
+  CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_SRC sh :tangle run.sh :shebang #!/usr/bin/env bash
     rm -frv /tmp/wirklich && \
         cd ~/prg/clj/napa && \
@@ -341,13 +402,15 @@
           -text /tmp/wirklich/part-r-00000
     
   #+END_SRC
-* TODO Example with clojure-hadoop
+* CANCELED Example with clojure-hadoop
+  CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_SRC clojure :tangle hadoop.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     (add-classpath "lib/*")
     
   #+END_SRC
-* TODO Hadoop in beanshell?
+* CANCELED Hadoop in beanshell?
+  CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_SRC java :tangle hadoop.bsh :shebang #!/usr/bin/env bsh
     addClassPath("lib/ant-1.6.5.jar");
     addClassPath("lib/clojure-1.3.0.jar");
@@ -426,7 +489,8 @@
     JobClient.runJob(conf);
     
   #+END_SRC
-* TODO Analogy with cascalag-checkpoint
+* CANCELED Analogy with cascalag-checkpoint
+  CLOSED: [2011-12-30 Fri 10:51]
   From Aaron:
 
   #+BEGIN_QUOTE
@@ -442,9 +506,8 @@
   have to reap them appropriately, though.
 
   Rebind =read= in someone else's namespace?
-* TODO [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
-  When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
-* TODO Spec
+* CANCELED Spec
+  CLOSED: [2011-12-30 Fri 10:51]
   If we have:
 
   #+BEGIN_SRC clojure
@@ -473,7 +536,8 @@
 
   where tasks are created with the default settings, if they don't
   exist; possibly with a warning on stdout.
-* TODO Proof-of-concept
+* CANCELED Proof-of-concept
+  CLOSED: [2011-12-30 Fri 10:52]
   Chain two map-reduce tasks together. Vineyardize the tasks (without
   napa).
 
@@ -537,7 +601,8 @@
   [[http://wiki.corp.factual.com/display/INFRA/Vineyard+Java+Driver][Vineyard Java client]]. MapReduce jobs in Clojure? And pre-existing
   code in Java.
 
-* TODO Extract POC
+* CANCELED Extract POC
+  CLOSED: [2011-12-30 Fri 10:52]
   [[https://github.com/Factual/hadoop-extraction-workflow/blob/master/src/java/workflows/extract/poi/UnitedStatesExtraction.java][US-extraction]]; enumerated subtasks:
 
   #+BEGIN_SRC java
@@ -650,7 +715,8 @@
     
   #+END_SRC
 
-* TODO =yaml= to vineyard
+* CANCELED =yaml= to vineyard
+  CLOSED: [2011-12-30 Fri 10:52]
   We're going to have a =.onStart=, =.onFinish=; yaml leaves specify
   tasks. Have a predecessor thing:
 
@@ -664,6 +730,8 @@
     demo
       webui (depends 1, 4)
   #+END_EXAMPLE
+* [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
+  When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
 * Notes
 ** Mon Dec 19 16:50:50 PST 2011   
    - at the end of task: check succeeded (Vineyard task); it fails;

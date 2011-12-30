@@ -128,12 +128,32 @@
        (map-uuid-to-payload
         (make-uuid-md5s)))))
     
-    (dependencies join-md5-and-payload
-                  (map-uuid-to-md5 make-uuid-md5s)
-                  (map-uuid-to-payload make-uuid-md5s))
-    
     (root join-md5-and-payload)
+  #+END_SRC
+
+  Change TaskQueue port from 8080 to 8081; parameters to TaskQueue:
+  optional parameter on the command line: API server, port, name of
+  the resource.
+
+  When run locally, next won't get kicked off (unless the consumer is
+  running, in which case the consumer will pick it up). Quick
+  iteration on one job: jump start that one, see it run, &c.
+
+  #+BEGIN_SRC java
+    Q.addTask(i0);
     
+    // Run right here, right now; limitation: not going to go to
+    // next. Advantage: don't have to create uberjar.
+    //
+    // Creates data in $PWD.
+    Q.jumpStart(i0);    
+  #+END_SRC
+
+  #+BEGIN_SRC clojure
+    ;;; Multimethod: second argument possibly a sequence.
+    (depend-on [map-uuid-to-md5
+                map-uuid-to-payload]
+               make-uuid-md5s)
   #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]

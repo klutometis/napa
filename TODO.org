@@ -1,3 +1,52 @@
+* TODO Job-spec
+  Two functions: a =defjob= which takes a symbol, qualified class name
+  and optional metadata (should be exported into a namespace for
+  composability); =set-dependencies!= which takes a dependency graph
+  of jobs.
+
+  #+BEGIN_SRC clojure
+    (load-file "othertoy.clj")
+    
+    (defn def-hadoop-task []
+      (doto (MapReduceTask.)))
+    
+    (defn def-shell-task [command]
+      )
+    
+    
+    (deftask make-uuid-md5s hewtoy/UUIDMD5Maker)
+    
+    (deftask ^{:dependencies [make-uuid-md5s]
+               :input-path "some-input-path"
+               :task-type hadoop}
+      uuid-to-payload-mapper hewtoy/UUIDToPayloadMapper)
+    
+    (deftask ^{:dependencies [make-uuid-md5s]}
+      uuid-to-md5-mapper hewtoy/UUIDToMD5Mapper)
+    
+    (deftask md5-and-payload-joiner hewtoy/MD5AndPayloadJoiner)
+    
+    (deftask ls-tmp hewtoy/NewLS)
+    
+    (set-dependencies!
+     (md5-and-payload-joiner
+      ((uuid-to-md5-mapper
+        make-uuid-md5s)
+       (uuid-to-payload-mapper
+        make-uuid-md5s
+        randomtask))))
+    
+    (set-root! md5-and-payload-joiner)
+    
+  #+END_SRC
+
+  Build out the root; send the root to vineyard. Have hadoop consumers
+  already running.
+
+  For the time being, comma delimited list: "input_paths"; also:
+  java-interop;
+
+  Draw dependency graphs: napa or vineyard?
 * TODO Attach-geocode POC
   #+BEGIN_EXAMPLE
     geocode-data(i3): /apps/extract/poi/UnitedKingdomScarecrow/input/geocode_data
@@ -275,6 +324,7 @@
 
     https://github.com/technomancy/leiningen/issues/31
 
+    (defjob map-uuid-to-md5 hewtoy/UUIDToMd5Mapper)
 * TODO Run the POC.
   #+BEGIN_SRC sh :tangle run.sh :shebang #!/usr/bin/env bash
     rm -frv /tmp/wirklich && \

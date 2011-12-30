@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
 import vineyard.hadoop.Vineyardized;
 
-public class UUIDToMD5Mapper implements Vineyardized {
+public class UUIDToPayloadMapper implements Vineyardized {
 
     public static class Map extends Mapper<LongWritable, Text, Text, Text> {
         public void map(LongWritable key,
@@ -26,15 +26,16 @@ public class UUIDToMD5Mapper implements Vineyardized {
             String MD5 = MD5AndUUID[0];
             String UUID = MD5AndUUID[1];
             context.write(new Text(UUID),
-                          new Text(String.format("md5: %s", MD5)));
+                          new Text(String.format("time: %s",
+                                                 System.currentTimeMillis())));
         }
     }
 
     public Job createJob(java.util.Map<String, String> properties) {
         try {
             Job job = new Job();
-            job.setJobName("map-uuid-to-md5");
-            job.setJarByClass(UUIDToMD5Mapper.class);
+            job.setJobName("map-uuid-to-payload");
+            job.setJarByClass(UUIDToPayloadMapper.class);
 
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(Text.class);

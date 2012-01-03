@@ -111,7 +111,7 @@
   And thence: [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/Diagram.java#L894][diagram.getShapeIterator]]; also [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/DiagramShape.java#L500][shape.getEdges]]; also
   [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L149][edge.getOwner]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][shape.getEndPoint]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][edge.getStartPoint]].
 
-  #+BEGIN_SRC clojure
+  #+BEGIN_SRC clojure :tangle task-spec.clj
     (import '(hewtoy UUIDToMD5Mapper
                      UUIDToMD5Mapper
                      MD5AndPayloadJoiner))
@@ -121,6 +121,15 @@
     (map-reduce-task map-uuid-to-payload UUIDToMD5Mapper)
     (map-reduce-task join-md5-and-payload MD5AndPayloadJoiner)
     
+    ;; Needs to create anonymous supertasks; e.g.
+    ;; (dependencies
+    ;;  <anonymous>
+    ;;  (join-md5-and-payload
+    ;;   (<anonymous>
+    ;;    (map-uuid-to-md5
+    ;;     (make-uuid-md5s))
+    ;;    (map-uuid-to-payload
+    ;;     (make-uuid-md5s)))))
     (dependencies
      (join-md5-and-payload
       ((map-uuid-to-md5
@@ -129,6 +138,7 @@
         (make-uuid-md5s)))))
     
     (root join-md5-and-payload)
+    
   #+END_SRC
 
   Change TaskQueue port from 8080 to 8081; parameters to TaskQueue:
@@ -154,6 +164,19 @@
     (depend-on [map-uuid-to-md5
                 map-uuid-to-payload]
                make-uuid-md5s)
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle run-task-spec.clj :shebang #!/usr/bin/env clj
+
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
+    (let [tree '(join-md5-and-payload
+                 ((map-uuid-to-md5
+                   (make-uuid-md5s))
+                  (map-uuid-to-payload
+                   (make-uuid-md5s))))]
+      )
   #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]

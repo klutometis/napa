@@ -172,11 +172,12 @@
     (add-classpath "lib/dev/*")
     (use 'debug.core)
     (use 'cadr.core)
+    (use 'lambda.core)
     
-    (defrecord node [name parents])
+    (defrecord node [name children parents])
     
     (defn make-node [name]
-      (node. name (atom #{})))
+      (node. name (atom #{}) (atom #{})))
     
     (def table
       {'join-md5-and-payload (make-node 1)
@@ -221,28 +222,39 @@
                                graph))))]
             (plumb graph)))
       (letfn [(plumb [parents graph]
-                (debug graph)
+                ;; (debug graph)
                 (if (list? graph)
                   (let [parent (get table (car graph))
                         children (cdr graph)]
                     (do
-                      (debug parent parents children)
+                      ;; (debug parent parents children)
                       (doseq [child children]
                         (plumb (cons parent parents) child))))
                   (do
-                    (debug 'leaf
-                           parents
-                           (get table graph))
+                    ;; (debug 'leaf
+                    ;;        parents
+                    ;;        (get table graph))
                     (loop [child (get table graph)
                            parents parents]
                       (if (not (empty? parents))
-                        (do (swap! (:parents child)
-                                   (fn [child-parents]
-                                     (conj child-parents (car parents))))
-                            (recur (car parents)
-                                   (cdr parents))))))))]
+                        (let [parent (car parents)]
+                          (do (swap! (:parents child)
+                                     (fn [child-parents]
+                                       (conj child-parents parent)))
+                              (swap! (:children parent)
+                                     (fn [parent-children]
+                                       (conj parent-children child)))
+                              (recur (car parents)
+                                     (cdr parents)))))))))]
         (plumb nil graph)
-        (doseq [[task node] table] (debug task node))))
+        (doseq [[task node] table] (debug task node))
+        #_(letfn [(sort [graph]
+                  (let [sinks
+                        (filter (λ [node]
+                                  (zero? (count (deref (:parents node)))))
+                                (vals table))]
+                    (debug sinks)))]
+          (sort graph))))
     
   #+END_SRC
 

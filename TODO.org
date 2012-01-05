@@ -173,6 +173,7 @@
     (use 'debug.core)
     (use 'cadr.core)
     (use 'lambda.core)
+    (use 'clojure.set)
     
     (defrecord node [name children parents])
     
@@ -248,14 +249,32 @@
                               (recur (car parents)
                                      (cdr parents)))))))))]
         (plumb nil graph)
-        (doseq [[task node] table] (debug task node))
-        #_(letfn [(sort [graph]
+        #_(doseq [[task node] table] (debug task node))
+        (letfn [(sort [graph]
                   (let [sources
                         (filter (λ [node]
-                                  (zero? (count (deref (:children node)))))
-                                (vals table))]
-                    (debug sources)))]
-          (sort graph))))
+                                  (zero? (count (deref (:parents node)))))
+                                (vals table))
+                        sortita (atom nil)]
+                    #_(debug (map :name sources))
+                    (loop [parents (set sources)
+                           sortita nil]
+                      (if (empty? parents)
+                        sortita
+                        (let [parent (car parents)
+                              children (deref (:children parent))]
+                          (doseq [child children]
+                            (swap! (:parents child)
+                                   (λ [parents]
+                                     (disj parents parent))))
+                          (let [sources
+                                (filter (λ [node]
+                                          (zero? (count (deref (:parents node)))))
+                                        children)]
+                            (recur (union (set sources)
+                                          (disj parents parent))
+                                   (cons parent sortita))))))))]
+          (debug (map :name (sort graph))))))
     
   #+END_SRC
 

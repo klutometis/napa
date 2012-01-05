@@ -1,4 +1,4 @@
-* TODO Job-spec
+* COMMENT TODO Job-spec
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
   composability); =set-dependencies!= which takes a dependency graph
@@ -166,17 +166,80 @@
                make-uuid-md5s)
   #+END_SRC
 
-  #+BEGIN_SRC clojure :tangle run-task-spec.clj :shebang #!/usr/bin/env clj
-
+  #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    (use 'debug.core)
+    (use 'cadr.core)
+    
+    ;;; Don't have a graph yet; this is just a tree. Need to do
+    ;;; table-lookup for idempotency.
+    (let [graph '(join-md5-and-payload
+                  (map-uuid-to-md5
+                   make-uuid-md5s)
+                  (map-uuid-to-payload
+                   make-uuid-md5s))]
+      #_(loop [graph graph]
+          (if (list? graph)
+            (doseq [node graph]
+              (recur node))
+            (println graph)))
+      #_(letfn [(plumb [parent graph]
+                  (debug
+                   graph
+                   parent
+                   (if (list? parent) (gensym) parent)
+                   )
+                  (if (list? graph)
+                    (doseq [node graph]
+                      (plumb graph node))
+                    (debug 'leaf)))]
+          (plumb 'harro graph))
+      #_(let [visited (atom '())]
+          (letfn [(plumb [graph]
+                    (debug (deref visited) graph)
+                    (if (list? graph)
+                      (doseq [node graph]
+                        (plumb  node))
+                      (do
+                        (debug 'leaf graph)
+                        (swap! visited
+                               (fn [visited graph]
+                                 (cons graph visited))
+                               graph))))]
+            (plumb graph)))
+      (letfn [(plumb [graph]
+                (debug graph)
+                (if (list? graph)
+                  (doseq [node graph]
+                    (plumb  node))
+                  (debug 'leaf)))]
+        (plumb graph)))
+    
   #+END_SRC
 
-  #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
-    (let [tree '(join-md5-and-payload
-                 ((map-uuid-to-md5
-                   (make-uuid-md5s))
-                  (map-uuid-to-payload
-                   (make-uuid-md5s))))]
-      )
+  Need to come up with a [[http://en.wikipedia.org/wiki/Minimum_spanning_tree][minimum spanning tree]], and some kind of
+  symbol \to task mapping? That way, when we begin at the leaves; or:
+  should we construct the tree such that Vineyard begins at the
+  leaves?
+
+  Do we need a step in the process which creates anonymous
+  intermediate nodes?
+
+  In clojure, we can't easily modify a list; therefore, might need
+  some kind of ad-hoc graph structure where we can remove nodes, &c.?
+
+  #+BEGIN_SRC clojure :tangle records.clj :shebang #!/usr/bin/env clj
+    (use 'clojure.test)
+    (defrecord harro [yes])
+    (def harro-0 (harro. 0))
+    
+    ;;; Local (non-mutative) association
+    (is (:yes (assoc harro-0 :yes 1) 1))
+    
+    ;;; Original the same
+    (is (:yes harro-0) 0)
   #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]

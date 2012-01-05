@@ -173,6 +173,17 @@
     (use 'debug.core)
     (use 'cadr.core)
     
+    (defrecord node [name parents])
+    
+    (defn make-node [name]
+      (node. name (atom #{})))
+    
+    (def table
+      {'join-md5-and-payload (make-node 1)
+       'map-uuid-to-md5 (make-node 2)
+       'map-uuid-to-payload (make-node 3)
+       'make-uuid-md5s (make-node 4)})
+    
     ;;; Don't have a graph yet; this is just a tree. Need to do
     ;;; table-lookup for idempotency.
     (let [graph '(join-md5-and-payload
@@ -209,13 +220,29 @@
                                  (cons graph visited))
                                graph))))]
             (plumb graph)))
-      (letfn [(plumb [graph]
+      (letfn [(plumb [parents graph]
                 (debug graph)
                 (if (list? graph)
-                  (doseq [node graph]
-                    (plumb  node))
-                  (debug 'leaf)))]
-        (plumb graph)))
+                  (let [parent (get table (car graph))
+                        children (cdr graph)]
+                    (do
+                      (debug parent parents children)
+                      (doseq [child children]
+                        (plumb (cons parent parents) child))))
+                  (do
+                    (debug 'leaf
+                           parents
+                           (get table graph))
+                    (loop [child (get table graph)
+                           parents parents]
+                      (if (not (empty? parents))
+                        (do (swap! (:parents child)
+                                   (fn [child-parents]
+                                     (conj child-parents (car parents))))
+                            (recur (car parents)
+                                   (cdr parents))))))))]
+        (plumb nil graph)
+        (doseq [[task node] table] (debug task node))))
     
   #+END_SRC
 
@@ -240,6 +267,19 @@
     
     ;;; Original the same
     (is (:yes harro-0) 0)
+    
+    (defrecord omg [for-reals])
+    (def wirklich (omg. (atom 1)))
+    
+    ;;; Pre-mutation
+    (is (deref (:for-reals wirklich)) 1)
+    
+    (swap! (:for-reals wirklich)
+           (fn [for-reals] (+ 1 for-reals)))
+    
+    ;;; Post-mutation
+    (is (deref (:for-reals wirklich)) 2)
+    
   #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]

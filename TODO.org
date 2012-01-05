@@ -238,22 +238,23 @@
                            parents parents]
                       (if (not (empty? parents))
                         (let [parent (car parents)]
-                          (do (swap! (:parents child)
-                                     (fn [child-parents]
-                                       (conj child-parents parent)))
-                              (swap! (:children parent)
-                                     (fn [parent-children]
-                                       (conj parent-children child)))
+                          (do
+                            (swap! (:parents child)
+                                   (fn [parents]
+                                     (conj parents parent)))
+                            (swap! (:children parent)
+                                     (fn [children]
+                                       (conj children child)))
                               (recur (car parents)
                                      (cdr parents)))))))))]
         (plumb nil graph)
         (doseq [[task node] table] (debug task node))
         #_(letfn [(sort [graph]
-                  (let [sinks
+                  (let [sources
                         (filter (λ [node]
-                                  (zero? (count (deref (:parents node)))))
+                                  (zero? (count (deref (:children node)))))
                                 (vals table))]
-                    (debug sinks)))]
+                    (debug sources)))]
           (sort graph))))
     
   #+END_SRC

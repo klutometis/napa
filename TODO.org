@@ -186,6 +186,8 @@
     
     (defn make-map-reduce-task [name class]
       (doto (MapReduceTask.)
+        (.addInitData "input_path" "md5-to-uuid")
+        (.addInitData "output_path" name)
         (.addInitData "mr_job_name" name)
         (.addInitData "mr_job_class" (.getCanonicalName class))))
     
@@ -209,7 +211,7 @@
                           UUIDToMD5Mapper))
        'map-uuid-to-payload (make-node
                              (make-map-reduce-task
-                              "UUIDToPayloadMapper"
+                              "map-uuid-to-payload"
                               UUIDToPayloadMapper))
        'make-uuid-md5s (make-node
                         (make-shell-task
@@ -274,7 +276,7 @@
                             (recur (union (set sources)
                                           (disj parents parent))
                                    (cons parent sortita))))))))]
-          (let [tasks (map :task (sort graph))]
+          (let [tasks (map :task (sort graph))] 
             (loop [task (car tasks)
                    next-tasks (cdr tasks)]
               (if (not (empty? next-tasks))
@@ -282,7 +284,9 @@
                   (.addNext task next-task)
                   (recur next-task (cdr next-tasks)))))
             (.runAll (TaskQueue. "task07" 8081 "topo-sort")
-                     (car tasks))))))
+                     (car tasks))
+            (doseq [task tasks]
+              (debug (.getId task)))))))
     
   #+END_SRC
 

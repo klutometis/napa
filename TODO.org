@@ -186,14 +186,14 @@
     
     (defn make-map-reduce-task [name class]
       (doto (MapReduceTask.)
-        (.addInitData "input_path" "md5-to-uuid")
-        (.addInitData "output_path" name)
-        (.addInitData "mr_job_name" name)
-        (.addInitData "mr_job_class" (.getCanonicalName class))))
+        (.setInitData "input_path" "md5-to-uuid")
+        (.setInitData "output_path" name)
+        (.setInitData "mr_job_name" name)
+        (.setInitData "mr_job_class" (.getCanonicalName class))))
     
     (defn make-shell-task [path]
       (doto (ShellTask.)
-        (.addInitData ShellTask/SHELL_CMD_KEY path)))
+        (.setInitData ShellTask/SHELL_CMD_KEY path)))
     
     (defrecord node [task children parents])
     

@@ -1,4 +1,4 @@
-* COMMENT TODO Job-spec
+* TODO Job-spec
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
   composability); =set-dependencies!= which takes a dependency graph
@@ -284,7 +284,9 @@
                   (.addNext task next-task)
                   (recur next-task (cdr next-tasks)))))
             (.runAll (TaskQueue. "task07" 8081 "topo-sort")
-                     (car tasks))
+                        (cadr tasks))
+            #_(.jumpStart (TaskQueue. "task07" 8081 "topo-sort")
+                          (cadr tasks))
             (doseq [task tasks]
               (debug (.getId task)))))))
     

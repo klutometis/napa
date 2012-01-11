@@ -8,6 +8,7 @@
     (use 'debug.core)
     (use 'lambda.core)
     (use 'cadr.core)
+    (use 'clojure.test)
     
     ;;; We can also implement a destructive topological sort with
     ;;; `transient', by the way. Or not: can't iterate over them, or even
@@ -35,6 +36,10 @@
                                   parent
                                   (cons child
                                         (get parent->children parent nil)))
+                          ;; Also: empty set for leaves.
+                          (assoc! parent->children
+                                  child
+                                  (get parent->children child nil))
                           (recur (car parents)
                                  (cdr parents)))))))]
           (plumb! nil tree)
@@ -42,9 +47,7 @@
            :parent->children (persistent! parent->children)})))
     
     (defλ sinks [parent->children]
-      (map car (filter (λ [[parent children]]
-                         (debug children)
-                         (zero? (count children)))
+      (map car (filter (λ [[parent children]] (zero? (count children)))
                        parent->children)))
     
     ;;; These don't give me sinks, by the way: merely symmetrical links.
@@ -52,10 +55,7 @@
       (let [sinks (sinks parent->children)
             visitata (transient #{})
             sortita (transient [])]
-        (debug child->parents parent->children)
-        (debug sinks)
         (letfn [(visit [child]
-                  (debug child)
                   (if (not (get visitata child))
                     (let [parents (get child->parents child)]
                       (conj! visitata child)
@@ -67,7 +67,8 @@
     
     (let [tree '(a (b d) (c d))
           {:keys [child->parents parent->children]} (tree->graph tree)]
-      (debug (topological-sort child->parents parent->children)))
+      (is (= (topological-sort child->parents parent->children)
+             '[a c a b d])))
     
   #+END_SRC
 * TODO Implement task-spec.

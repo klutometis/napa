@@ -1,3 +1,126 @@
+* TODO Implement task-spec.
+  #+BEGIN_SRC clojure :tangle task-spec.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    
+    (use 'debug.core)
+    (use 'cadr.core)
+    (use 'lambda.core)
+    (use 'clojure.set)
+    
+    (import '(vineyard.hadoop MapReduceTask)
+            '(vineyard.shell ShellTask)
+            '(vineyard Task
+                       TaskQueue)
+            '(hewtoy MD5AndPayloadJoiner
+                     UUIDToPayloadMapper
+                     UUIDToMD5Mapper))
+    
+    (defn make-map-reduce-task [name class input output]
+      (doto (MapReduceTask.)
+        (.setInitData "input_path" input)
+        (.setInitData "output_path" output)
+        (.setInitData "mr_job_name" name)
+        (.setInitData "mr_job_class" (.getCanonicalName class))))
+    
+    (defn make-shell-task [path]
+      (doto (ShellTask.)
+        (.setInitData ShellTask/SHELL_CMD_KEY path)))
+    
+    (defrecord node [task children parents])
+    
+    (defn make-node [task]
+      (node. task (atom #{}) (atom #{})))
+    
+    (defλ tree->graph
+      ([tree]
+         (tree->graph nil tree))
+      ([parents tree]
+         (if (list? tree)
+           (let [parent (get table (car tree))
+                 children (cdr tree)]
+             (do
+               (doseq [child children]
+                 (plumb (cons parent parents) child))))
+           (do
+             (loop [child (get table tree)
+                    parents parents]
+               (if (not (empty? parents))
+                 (let [parent (car parents)]
+                   (do
+                     (swap! (:parents child)
+                            (fn [parents]
+                              (conj parents parent)))
+                     (swap! (:children parent)
+                            (fn [children]
+                              (conj children child)))
+                     (recur (car parents)
+                            (cdr parents))))))))))
+    
+    (defλ topological-sort [graph]
+      (let [sources
+            (filter (λ [node]
+                      (zero? (count (deref (:parents node)))))
+                    (vals table))
+            sortita (atom nil)]
+        (loop [parents (set sources)
+               sortita nil]
+          (if (empty? parents)
+            sortita
+            (let [parent (car parents)
+                  children (deref (:children parent))]
+              (doseq [child children]
+                (swap! (:parents child)
+                       (λ [parents]
+                         (disj parents parent))))
+              (let [sources
+                    (filter (λ [node]
+                              (zero? (count (deref (:parents node)))))
+                            children)]
+                (recur (union (set sources)
+                              (disj parents parent))
+                       (cons parent sortita))))))))
+    
+    (def ^:dynamic *default-host* "task07")
+    (def ^:dynamic *default-port* "task07")
+    (def ^:dynamic *default-resource* "test")
+    
+    (defλ run-tree [tree]
+      (let [graph (tree->graph tree)
+            tasks (map :task (topological-sort graph))]
+        (.runAll (TaskQueue. *default-host* *default-port* *default-resource*))))
+    
+    (load "make-uuid-md5s.clj")
+    
+    (import '(hewtoy UUIDToMD5Mapper
+                     UUIDToMD5Mapper
+                     MD5AndPayloadJoiner))
+    
+    ;; (shell-task make-uuid-md5s "md5-uuid.sh")
+    
+    (map-reduce-task map-uuid-to-md5
+                     UUIDToMD5Mapper
+                     :dependencies (make-uuid-md5s))
+    
+    (map-reduce-task map-uuid-to-payload
+                     UUIDToMD5Mapper
+                     :dependencies (make-uuid-md5s))
+    
+    (map-reduce-task join-md5-and-payload
+                     MD5AndPayloadJoiner
+                     :dependencies (map-uuid-to-md5
+                                    map-uuid-to-payload))
+    
+    (dependencies
+     (join-md5-and-payload
+      (map-uuid-to-md5
+       make-uuid-md5s)
+      (map-uuid-to-payload
+       make-uuid-md5s)))
+    
+  #+END_SRC
 * TODO Job-spec
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for

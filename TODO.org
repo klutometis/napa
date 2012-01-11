@@ -1,3 +1,75 @@
+* TODO =tree->graph=
+  #+BEGIN_SRC clojure :tangle tree-to-graph.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    
+    (use 'debug.core)
+    (use 'lambda.core)
+    (use 'cadr.core)
+    
+    ;;; We can also implement a destructive topological sort with
+    ;;; `transient', by the way. Or not: can't iterate over them, or even
+    ;;; extract the keys.
+    (defλ tree->graph [tree]
+      (let [child->parents (transient {})
+            parent->children (transient {})]
+        (letfn [(plumb! [parents tree]
+                  (if (list? tree)
+                    ;; This is what forbids the implicit primes: we
+                    ;; require a parent.
+                    (let [parent (car tree)
+                          children (cdr tree)]
+                      (doseq [child children]
+                        (plumb! (cons parent parents) child)))
+                    (loop [child tree
+                           parents parents]
+                      (if (not (empty? parents))
+                        (let [parent (car parents)]
+                          (assoc! child->parents
+                                  child
+                                  (cons parent
+                                        (get child->parents child nil)))
+                          (assoc! parent->children
+                                  parent
+                                  (cons child
+                                        (get parent->children parent nil)))
+                          (recur (car parents)
+                                 (cdr parents)))))))]
+          (plumb! nil tree)
+          {:child->parents (persistent! child->parents)
+           :parent->children (persistent! parent->children)})))
+    
+    (defλ sinks [parent->children]
+      (map car (filter (λ [[parent children]]
+                         (debug children)
+                         (zero? (count children)))
+                       parent->children)))
+    
+    ;;; These don't give me sinks, by the way: merely symmetrical links.
+    (defλ topological-sort [child->parents parent->children]
+      (let [sinks (sinks parent->children)
+            visitata (transient #{})
+            sortita (transient [])]
+        (debug child->parents parent->children)
+        (debug sinks)
+        (letfn [(visit [child]
+                  (debug child)
+                  (if (not (get visitata child))
+                    (let [parents (get child->parents child)]
+                      (conj! visitata child)
+                      (doseq [parent parents]
+                        (visit parent))
+                      (conj! sortita child))))]
+          (doseq [sink sinks] (visit sink)))
+        (persistent! sortita)))
+    
+    (let [tree '(a (b d) (c d))
+          {:keys [child->parents parent->children]} (tree->graph tree)]
+      (debug (topological-sort child->parents parent->children)))
+    
+  #+END_SRC
 * TODO Implement task-spec.
   #+BEGIN_SRC clojure :tangle task-spec.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
@@ -34,6 +106,17 @@
     (defn make-node [task]
       (node. task (atom #{}) (atom #{})))
     
+    ;;; This should somehow return an adjacency list and root; can we
+    ;;; `assoc!' a children and parent map along the way, finally do
+    ;;; `make-node' on the maps and designating a root? We need a third
+    ;;; table of name to nodes, probably. If we traffic in symbols, the
+    ;;; name -> node association can change without creating orphans.
+    ;;;
+    ;;; We really need a payload table; with the automatic idempotency of
+    ;;; symbols. (It only makes sense to be idempotent with respect to a
+    ;;; binary operation, by the way. Not true:
+    ;;; <http://en.wikipedia.org/wiki/Idempotence#Unary_operation>. Quality
+    ;;; of symbols such that self-referential?)
     (defλ tree->graph
       ([tree]
          (tree->graph nil tree))
@@ -84,43 +167,66 @@
                        (cons parent sortita))))))))
     
     (def ^:dynamic *default-host* "task07")
-    (def ^:dynamic *default-port* "task07")
+    (def ^:dynamic *default-port* "8081")
     (def ^:dynamic *default-resource* "test")
     
     (defλ run-tree [tree]
       (let [graph (tree->graph tree)
             tasks (map :task (topological-sort graph))]
-        (.runAll (TaskQueue. *default-host* *default-port* *default-resource*))))
-    
-    (load "make-uuid-md5s.clj")
+        (.runAll (TaskQueue. *default-host* *default-port* *default-resource*)
+                 (car tasks))))
     
     (import '(hewtoy UUIDToMD5Mapper
                      UUIDToMD5Mapper
                      MD5AndPayloadJoiner))
     
-    ;; (shell-task make-uuid-md5s "md5-uuid.sh")
+    ;;; These procedures are distinct from the DSL that invokes them.
+    (def join-md5-and-payload
+      (make-map-reduce-task
+       "join-md5-and-payload"
+       MD5AndPayloadJoiner
+       "uuid-to-payload,uuid-to-md5"
+       "md5-and-payload"))
     
-    (map-reduce-task map-uuid-to-md5
-                     UUIDToMD5Mapper
-                     :dependencies (make-uuid-md5s))
+    (def map-uuid-to-md5
+      (make-map-reduce-task
+       "map-uuid-to-md5"
+       UUIDToMD5Mapper
+       "md5-to-uuid"
+       "uuid-to-md5"))
     
-    (map-reduce-task map-uuid-to-payload
-                     UUIDToMD5Mapper
-                     :dependencies (make-uuid-md5s))
+    (def map-uuid-to-payload
+      (make-map-reduce-task
+       "map-uuid-to-payload"
+       UUIDToPayloadMapper
+       "md5-to-uuid"
+       "uuid-to-payload"))
     
-    (map-reduce-task join-md5-and-payload
-                     MD5AndPayloadJoiner
-                     :dependencies (map-uuid-to-md5
-                                    map-uuid-to-payload))
+    (def make-uuid-md5s
+      (make-shell-task
+       "./make-md5-to-uuid.sh"))
     
-    (dependencies
-     (join-md5-and-payload
-      (map-uuid-to-md5
-       make-uuid-md5s)
-      (map-uuid-to-payload
-       make-uuid-md5s)))
+    (tree->graph
+     [join-md5-and-payload
+      [map-uuid-to-md5
+       make-uuid-md5s]
+      [map-uuid-to-payload
+       make-uuid-md5s]])
     
   #+END_SRC
+
+  Some node-aware post-processing that e.g. sets the input/output
+  paths in hadoop nodes; a post-graph-walk (just on the adjancency
+  table?).
+
+  Whilst sleeping: =tree->graph= creates nodes, etc.; =walk-graph=
+  let's you modify the nodes (possibly with a dispatch table of type
+  \to modifier); =enqueue-graph=, =enqueue-graph-topologically=,
+  &c. Need to specify root{,s}?
+
+  Should the DSL use e.g. fully qualified classes such that we can
+  worry about resolution later (and treat them, basically, as strings;
+  which is what Vineyard does)?
 * TODO Job-spec
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
@@ -292,9 +398,10 @@
 
   #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
+    
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-    (add-classpath "hewtoy/*")
+    
     (use 'debug.core)
     (use 'cadr.core)
     (use 'lambda.core)
@@ -307,10 +414,10 @@
                      UUIDToPayloadMapper
                      UUIDToMD5Mapper))
     
-    (defn make-map-reduce-task [name class]
+    (defn make-map-reduce-task [name class input output]
       (doto (MapReduceTask.)
-        (.setInitData "input_path" "md5-to-uuid")
-        (.setInitData "output_path" name)
+        (.setInitData "input_path" input)
+        (.setInitData "output_path" output)
         (.setInitData "mr_job_name" name)
         (.setInitData "mr_job_class" (.getCanonicalName class))))
     
@@ -327,15 +434,21 @@
       {'join-md5-and-payload (make-node
                               (make-map-reduce-task
                                "join-md5-and-payload"
-                               MD5AndPayloadJoiner))
+                               MD5AndPayloadJoiner
+                               "uuid-to-payload,uuid-to-md5"
+                               "md5-and-payload"))
        'map-uuid-to-md5 (make-node
                          (make-map-reduce-task
                           "map-uuid-to-md5"
-                          UUIDToMD5Mapper))
+                          UUIDToMD5Mapper
+                          "md5-to-uuid"
+                          "uuid-to-md5"))
        'map-uuid-to-payload (make-node
                              (make-map-reduce-task
                               "map-uuid-to-payload"
-                              UUIDToPayloadMapper))
+                              UUIDToPayloadMapper
+                              "md5-to-uuid"
+                              "uuid-to-payload"))
        'make-uuid-md5s (make-node
                         (make-shell-task
                          "./make-md5-to-uuid.sh"))})
@@ -407,7 +520,7 @@
                   (.addNext task next-task)
                   (recur next-task (cdr next-tasks)))))
             (.runAll (TaskQueue. "task07" 8081 "topo-sort")
-                        (cadr tasks))
+                     (first tasks))
             #_(.jumpStart (TaskQueue. "task07" 8081 "topo-sort")
                           (cadr tasks))
             (doseq [task tasks]

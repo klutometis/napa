@@ -11,4 +11,5 @@
   :repositories {"factual" "http://maven.corp.factual.com/nexus/content/groups/public"
                  "releases" "http://maven.corp.factual.com/nexus/content/repositories/releases"
                  "snapshots" "http://maven.corp.factual.com/nexus/content/repositories/snapshots"}
-  :dev-dependencies [[debug "1.0.0-SNAPSHOT"]])
+  :dev-dependencies [[debug "1.0.0-SNAPSHOT"]
+                     [ordered "1.0.0"]])

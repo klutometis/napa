@@ -1,3 +1,6 @@
+* TODO We could actually do topo without repetition if we had ordered sets.
+  Either order on a secondary key or use [[https://github.com/flatland/ordered][ordered sets]]; damn, Alan even
+  handles the transient case. Let's see how it behaves.
 * TODO =tree->graph=
   #+BEGIN_SRC clojure :tangle tree-to-graph.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)

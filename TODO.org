@@ -1,4 +1,13 @@
-* TODO Given then graph, build the job.
+* TODO Actually implement the DSL.
+  #+BEGIN_SRC clojure :tangle input.clj
+
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle 
+
+  #+END_SRC
+* DONE Given then graph, build the job.
+  CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle build-job.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     
@@ -145,10 +154,12 @@
                  root)))
     
   #+END_SRC
-* TODO We could actually do topo without repetition if we had ordered sets.
+* DONE We could actually do topo without repetition if we had ordered sets.
+  CLOSED: [2012-01-13 Fri 14:04]
   Either order on a secondary key or use [[https://github.com/flatland/ordered][ordered sets]]; damn, Alan even
   handles the transient case. Let's see how it behaves.
-* TODO =tree->graph=
+* DONE =tree->graph=
+  CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle tree-to-graph.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     
@@ -225,7 +236,8 @@
              '[a c a b d])))
     
   #+END_SRC
-* TODO Implement task-spec.
+* DONE Implement task-spec.
+  CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle task-spec.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     
@@ -382,7 +394,8 @@
   Should the DSL use e.g. fully qualified classes such that we can
   worry about resolution later (and treat them, basically, as strings;
   which is what Vineyard does)?
-* TODO Job-spec
+* DONE Job-spec
+  CLOSED: [2012-01-13 Fri 14:04]
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
   composability); =set-dependencies!= which takes a dependency graph

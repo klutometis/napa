@@ -396,6 +396,18 @@
   which is what Vineyard does)?
 * DONE Job-spec
   CLOSED: [2012-01-13 Fri 14:04]
+* TODO HEW
+  Extract dedupe as library; generalize dedupe. Let's Vineyardize HEW
+  without HEW knowing.
+
+  #+BEGIN_SRC clojure :tangle hew-sans-vineyard.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    
+    (import '(mapreduce.tasks ConvertGeocodingResultsToTab))
+  #+END_SRC
+* TODO Job-spec
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
   composability); =set-dependencies!= which takes a dependency graph

@@ -7,7 +7,8 @@
                  [lambda "1.0.2-SNAPSHOT"]
                  [factual/vineyard-hadoop "1.2.3-SNAPSHOT"]
                  ;; [factual/vineyard-java-driver "1.4.3-SNAPSHOT"]
-                 [hewtoy "1.0.1-SNAPSHOT"]]
+                 [hewtoy "1.0.1-SNAPSHOT"]
+                 [factual/hadoop-extraction-workflow "0.1-SNAPSHOT"]]
   :repositories {"factual" "http://maven.corp.factual.com/nexus/content/groups/public"
                  "releases" "http://maven.corp.factual.com/nexus/content/repositories/releases"
                  "snapshots" "http://maven.corp.factual.com/nexus/content/repositories/snapshots"}

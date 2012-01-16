@@ -1,10 +1,363 @@
-* TODO Actually implement the DSL.
-  #+BEGIN_SRC clojure :tangle input.clj
+* TODO HEW
+  Extract dedupe as library; generalize dedupe. Let's Vineyardize HEW
+  without HEW knowing.
 
+  #+BEGIN_SRC clojure :tangle hew-sans-vineyard.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    
+    (import '(mapreduce.tasks ConvertGeocodingResultsToTab)
+            '(vineyard.hadoop MapReduceJobCreator
+                              MapReduceTask)
+            '(vineyard Task
+                       TaskQueue))
+    
+    (def job
+      (proxy [MapReduceJobCreator] []
+        (createJob [configuration]
+          (.createJob (ConvertGeocodingResultsToTab.)))))
+    
+    (.runAll (TaskQueue. "task07" 8081 "test")
+             (doto (MapReduceTask.)
+               (.setInitData "mr_job_class" (.getCanonicalName (class job)))))
+    
+  #+END_SRC
+* TODO Job-spec
+  Two functions: a =defjob= which takes a symbol, qualified class name
+  and optional metadata (should be exported into a namespace for
+  composability); =set-dependencies!= which takes a dependency graph
+  of jobs.
+
+  #+BEGIN_SRC clojure
+    (load-file "othertoy.clj")
+    
+    (defn def-task [class init-data]
+      (doto (new class)
+        (set-init-data)))
+    
+    (defn def-hadoop-task []
+      (def-task MapReduceTask {:blah "blah"}))
+    
+    (defn def-shell-task [command]
+      )
+    
+    
+    (deftask make-uuid-md5s hewtoy/UUIDMD5Maker)
+    
+    (deftask ^{:dependencies [make-uuid-md5s]
+               :input-path "some-input-path"
+               :task-type hadoop}
+      uuid-to-payload-mapper hewtoy/UUIDToPayloadMapper)
+    
+    (deftask ^{:dependencies [make-uuid-md5s]}
+      uuid-to-md5-mapper hewtoy/UUIDToMD5Mapper)
+    
+    (deftask md5-and-payload-joiner hewtoy/MD5AndPayloadJoiner)
+    
+    (deftask ls-tmp hewtoy/NewLS)
+    
+    (set-dependencies!
+     (md5-and-payload-joiner
+      ((uuid-to-md5-mapper
+        make-uuid-md5s)
+       (uuid-to-payload-mapper
+        make-uuid-md5s
+        randomtask))))
+    
+    (set-root! md5-and-payload-joiner)
+    
   #+END_SRC
 
-  #+BEGIN_SRC clojure :tangle 
+  Build out the root; send the root to vineyard. Have hadoop consumers
+  already running.
 
+  For the time being, comma delimited list: "input_paths"; also:
+  java-interop;
+
+  Draw dependency graphs: napa or vineyard?
+
+  We need to distinguish between different classes of tasks: there's
+  vanilla Vineyard tasks, but also shell-tasks, hadoop-tasks.
+
+  General pattern: instantiate some nullary constructor; specify
+  initData.
+
+  Clojure driver based on the [[https://github.com/Factual/vineyard-java-driver][Java driver]].
+
+  Two axes: dependency vs. predecessorship; expressed independently,
+  too. See [[http://en.wikipedia.org/wiki/Tree_(graph_theory)#Definitions][this]], by the way:
+
+  #+BEGIN_QUOTE
+  An ordered tree or plane tree is a rooted tree for which an ordering
+  is specified for the children of each vertex.
+  #+END_QUOTE
+
+  Also:
+
+  #+BEGIN_QUOTE
+  The term hedge sometimes refers to an ordered sequence of trees.
+  #+END_QUOTE
+
+  Are we dealing with a partially ordered tree? Where ordering
+  expresses synchronicity (sequence).
+
+  Generic =make-task= interface with a class and an init-data map;
+  gets specialized into =make-hadoop-task= (or, alternatively,
+  =task=), =make-shell-task= (=shell-task=), &c.
+
+  =task=, =hadoop-task= (=map-reduce-task=, for that matter),
+  =shell-task= are good if we're going declaritive; =dependency-graph=
+  (or simply =dependencies=), furthermore; as well as
+  =predecessor-graph= (or simply =predecessors=).[fn:: We'd only need
+  to specify =-graph= is there was some meaningful distinction, such
+  as e.g. =-tree=?] (How to visually express dependency and
+  predecessorship in the same graph, by the way: differently colored
+  links? Two graphs? Numbers?)
+
+  Also, the Clojure metadata stuff is pretty ugly; different mechanism
+  for specifying the init-data?
+
+  See [[http://en.wikipedia.org/wiki/Dataflow_programming][dataflow-programming]]; [[http://stackoverflow.com/questions/4565158/using-clojure-dataflow-programming-idioms][in Clojure]]; [[http://richhickey.github.com/clojure-contrib/dataflow-api.html][API]]. [[http://upload.wikimedia.org/wikipedia/en/3/33/FBP_3_block_diagram.jpg][Block diagramm]].
+
+  [[http://ditaa.sourceforge.net/][ditaa]] is what I'm talking about: parse it and input it. [[https://github.com/stathissideris/ditaa][Source]]. Take
+  a look at [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/core/CommandLineConverter.java#L222][this]]; basically:
+
+  #+BEGIN_SRC java
+    TextGrid grid = new TextGrid();
+    grid.loadFrom(fromFilename, options.processingOptions);
+    Diagram diagram = new Diagram(grid, options);
+    
+    // Don't need the following if we're just parsing the file.
+    RenderedImage image = new BitmapRenderer().renderToImage(diagram, options.renderingOptions);
+    ImageIO.write(image, "png", os);
+  #+END_SRC
+
+  And thence: [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/Diagram.java#L894][diagram.getShapeIterator]]; also [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/DiagramShape.java#L500][shape.getEdges]]; also
+  [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L149][edge.getOwner]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][shape.getEndPoint]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][edge.getStartPoint]].
+
+  #+BEGIN_SRC clojure :tangle task-spec.clj
+    (load "make-uuid-md5s.clj")
+    
+    (import '(hewtoy UUIDToMD5Mapper
+                     UUIDToMD5Mapper
+                     MD5AndPayloadJoiner))
+    
+    ;; (shell-task make-uuid-md5s "md5-uuid.sh")
+    
+    (map-reduce-task map-uuid-to-md5
+                     UUIDToMD5Mapper
+                     :dependencies (make-uuid-md5s))
+    
+    (map-reduce-task map-uuid-to-payload
+                     UUIDToMD5Mapper
+                     :dependencies (make-uuid-md5s))
+    
+    (map-reduce-task join-md5-and-payload
+                     MD5AndPayloadJoiner
+                     :dependencies (map-uuid-to-md5
+                                    map-uuid-to-payload))
+    
+    (dependencies
+     (join-md5-and-payload
+      (map-uuid-to-md5
+       make-uuid-md5s)
+      (map-uuid-to-payload
+       make-uuid-md5s)))
+    
+  #+END_SRC
+
+  Change TaskQueue port from 8080 to 8081; parameters to TaskQueue:
+  optional parameter on the command line: API server, port, name of
+  the resource.
+
+  When run locally, next won't get kicked off (unless the consumer is
+  running, in which case the consumer will pick it up). Quick
+  iteration on one job: jump start that one, see it run, &c.
+
+  #+BEGIN_SRC java
+    Q.addTask(i0);
+    
+    // Run right here, right now; limitation: not going to go to
+    // next. Advantage: don't have to create uberjar.
+    //
+    // Creates data in $PWD.
+    Q.jumpStart(i0);    
+  #+END_SRC
+
+  #+BEGIN_SRC clojure
+    ;;; Multimethod: second argument possibly a sequence.
+    (depend-on [map-uuid-to-md5
+                map-uuid-to-payload]
+               make-uuid-md5s)
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
+    (use 'add-classpath.core)
+    
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    
+    (use 'debug.core)
+    (use 'cadr.core)
+    (use 'lambda.core)
+    (use 'clojure.set)
+    (import '(vineyard.hadoop MapReduceTask)
+            '(vineyard.shell ShellTask)
+            '(vineyard Task
+                       TaskQueue)
+            '(hewtoy MD5AndPayloadJoiner
+                     UUIDToPayloadMapper
+                     UUIDToMD5Mapper))
+    
+    (defn make-map-reduce-task [name class input output]
+      (doto (MapReduceTask.)
+        (.setInitData "input_path" input)
+        (.setInitData "output_path" output)
+        (.setInitData "mr_job_name" name)
+        (.setInitData "mr_job_class" (.getCanonicalName class))))
+    
+    (defn make-shell-task [path]
+      (doto (ShellTask.)
+        (.setInitData ShellTask/SHELL_CMD_KEY path)))
+    
+    (defrecord node [task children parents])
+    
+    (defn make-node [task]
+      (node. task (atom #{}) (atom #{})))
+    
+    (def table
+      {'join-md5-and-payload (make-node
+                              (make-map-reduce-task
+                               "join-md5-and-payload"
+                               MD5AndPayloadJoiner
+                               "uuid-to-payload,uuid-to-md5"
+                               "md5-and-payload"))
+       'map-uuid-to-md5 (make-node
+                         (make-map-reduce-task
+                          "map-uuid-to-md5"
+                          UUIDToMD5Mapper
+                          "md5-to-uuid"
+                          "uuid-to-md5"))
+       'map-uuid-to-payload (make-node
+                             (make-map-reduce-task
+                              "map-uuid-to-payload"
+                              UUIDToPayloadMapper
+                              "md5-to-uuid"
+                              "uuid-to-payload"))
+       'make-uuid-md5s (make-node
+                        (make-shell-task
+                         "./make-md5-to-uuid.sh"))})
+    
+    ;;; Don't have a graph yet; this is just a tree. Need to do
+    ;;; table-lookup for idempotency.
+    (let [graph '(join-md5-and-payload
+                  (map-uuid-to-md5
+                   make-uuid-md5s)
+                  (map-uuid-to-payload
+                   make-uuid-md5s))]
+      (letfn [(plumb [parents graph]
+                ;; (debug graph)
+                (if (list? graph)
+                  (let [parent (get table (car graph))
+                        children (cdr graph)]
+                    (do
+                      ;; (debug parent parents children)
+                      (doseq [child children]
+                        (plumb (cons parent parents) child))))
+                  (do
+                    ;; (debug 'leaf
+                    ;;        parents
+                    ;;        (get table graph))
+                    (loop [child (get table graph)
+                           parents parents]
+                      (if (not (empty? parents))
+                        (let [parent (car parents)]
+                          (do
+                            (swap! (:parents child)
+                                   (fn [parents]
+                                     (conj parents parent)))
+                            (swap! (:children parent)
+                                     (fn [children]
+                                       (conj children child)))
+                              (recur (car parents)
+                                     (cdr parents)))))))))]
+        (plumb nil graph)
+        #_(doseq [[task node] table] (debug task node))
+        (letfn [(sort [graph]
+                  (let [sources
+                        (filter (λ [node]
+                                  (zero? (count (deref (:parents node)))))
+                                (vals table))
+                        sortita (atom nil)]
+                    #_(debug (map :name sources))
+                    (loop [parents (set sources)
+                           sortita nil]
+                      (if (empty? parents)
+                        sortita
+                        (let [parent (car parents)
+                              children (deref (:children parent))]
+                          (doseq [child children]
+                            (swap! (:parents child)
+                                   (λ [parents]
+                                     (disj parents parent))))
+                          (let [sources
+                                (filter (λ [node]
+                                          (zero? (count (deref (:parents node)))))
+                                        children)]
+                            (recur (union (set sources)
+                                          (disj parents parent))
+                                   (cons parent sortita))))))))]
+          (let [tasks (map :task (sort graph))] 
+            (loop [task (car tasks)
+                   next-tasks (cdr tasks)]
+              (if (not (empty? next-tasks))
+                (let [next-task (car next-tasks)]
+                  (.addNext task next-task)
+                  (recur next-task (cdr next-tasks)))))
+            (.runAll (TaskQueue. "task07" 8081 "topo-sort")
+                     (first tasks))
+            #_(.jumpStart (TaskQueue. "task07" 8081 "topo-sort")
+                          (cadr tasks))
+            (doseq [task tasks]
+              (debug (.getId task)))))))
+    
+  #+END_SRC
+
+  Need to come up with a [[http://en.wikipedia.org/wiki/Minimum_spanning_tree][minimum spanning tree]], and some kind of
+  symbol \to task mapping? That way, when we begin at the leaves; or:
+  should we construct the tree such that Vineyard begins at the
+  leaves?
+
+  Do we need a step in the process which creates anonymous
+  intermediate nodes?
+
+  In clojure, we can't easily modify a list; therefore, might need
+  some kind of ad-hoc graph structure where we can remove nodes, &c.?
+
+  #+BEGIN_SRC clojure :tangle records.clj :shebang #!/usr/bin/env clj
+    (use 'clojure.test)
+    (defrecord harro [yes])
+    (def harro-0 (harro. 0))
+    
+    ;;; Local (non-mutative) association
+    (is (:yes (assoc harro-0 :yes 1) 1))
+    
+    ;;; Original the same
+    (is (:yes harro-0) 0)
+    
+    (defrecord omg [for-reals])
+    (def wirklich (omg. (atom 1)))
+    
+    ;;; Pre-mutation
+    (is (deref (:for-reals wirklich)) 1)
+    
+    (swap! (:for-reals wirklich)
+           (fn [for-reals] (+ 1 for-reals)))
+    
+    ;;; Post-mutation
+    (is (deref (:for-reals wirklich)) 2)
+    
   #+END_SRC
 * DONE Given then graph, build the job.
   CLOSED: [2012-01-13 Fri 14:04]
@@ -396,353 +749,6 @@
   which is what Vineyard does)?
 * DONE Job-spec
   CLOSED: [2012-01-13 Fri 14:04]
-* TODO HEW
-  Extract dedupe as library; generalize dedupe. Let's Vineyardize HEW
-  without HEW knowing.
-
-  #+BEGIN_SRC clojure :tangle hew-sans-vineyard.clj :shebang #!/usr/bin/env clj
-    (use 'add-classpath.core)
-    (add-classpath "lib/*")
-    (add-classpath "lib/dev/*")
-    
-    (import '(mapreduce.tasks ConvertGeocodingResultsToTab))
-  #+END_SRC
-* TODO Job-spec
-  Two functions: a =defjob= which takes a symbol, qualified class name
-  and optional metadata (should be exported into a namespace for
-  composability); =set-dependencies!= which takes a dependency graph
-  of jobs.
-
-  #+BEGIN_SRC clojure
-    (load-file "othertoy.clj")
-    
-    (defn def-task [class init-data]
-      (doto (new class)
-        (set-init-data)))
-    
-    (defn def-hadoop-task []
-      (def-task MapReduceTask {:blah "blah"}))
-    
-    (defn def-shell-task [command]
-      )
-    
-    
-    (deftask make-uuid-md5s hewtoy/UUIDMD5Maker)
-    
-    (deftask ^{:dependencies [make-uuid-md5s]
-               :input-path "some-input-path"
-               :task-type hadoop}
-      uuid-to-payload-mapper hewtoy/UUIDToPayloadMapper)
-    
-    (deftask ^{:dependencies [make-uuid-md5s]}
-      uuid-to-md5-mapper hewtoy/UUIDToMD5Mapper)
-    
-    (deftask md5-and-payload-joiner hewtoy/MD5AndPayloadJoiner)
-    
-    (deftask ls-tmp hewtoy/NewLS)
-    
-    (set-dependencies!
-     (md5-and-payload-joiner
-      ((uuid-to-md5-mapper
-        make-uuid-md5s)
-       (uuid-to-payload-mapper
-        make-uuid-md5s
-        randomtask))))
-    
-    (set-root! md5-and-payload-joiner)
-    
-  #+END_SRC
-
-  Build out the root; send the root to vineyard. Have hadoop consumers
-  already running.
-
-  For the time being, comma delimited list: "input_paths"; also:
-  java-interop;
-
-  Draw dependency graphs: napa or vineyard?
-
-  We need to distinguish between different classes of tasks: there's
-  vanilla Vineyard tasks, but also shell-tasks, hadoop-tasks.
-
-  General pattern: instantiate some nullary constructor; specify
-  initData.
-
-  Clojure driver based on the [[https://github.com/Factual/vineyard-java-driver][Java driver]].
-
-  Two axes: dependency vs. predecessorship; expressed independently,
-  too. See [[http://en.wikipedia.org/wiki/Tree_(graph_theory)#Definitions][this]], by the way:
-
-  #+BEGIN_QUOTE
-  An ordered tree or plane tree is a rooted tree for which an ordering
-  is specified for the children of each vertex.
-  #+END_QUOTE
-
-  Also:
-
-  #+BEGIN_QUOTE
-  The term hedge sometimes refers to an ordered sequence of trees.
-  #+END_QUOTE
-
-  Are we dealing with a partially ordered tree? Where ordering
-  expresses synchronicity (sequence).
-
-  Generic =make-task= interface with a class and an init-data map;
-  gets specialized into =make-hadoop-task= (or, alternatively,
-  =task=), =make-shell-task= (=shell-task=), &c.
-
-  =task=, =hadoop-task= (=map-reduce-task=, for that matter),
-  =shell-task= are good if we're going declaritive; =dependency-graph=
-  (or simply =dependencies=), furthermore; as well as
-  =predecessor-graph= (or simply =predecessors=).[fn:: We'd only need
-  to specify =-graph= is there was some meaningful distinction, such
-  as e.g. =-tree=?] (How to visually express dependency and
-  predecessorship in the same graph, by the way: differently colored
-  links? Two graphs? Numbers?)
-
-  Also, the Clojure metadata stuff is pretty ugly; different mechanism
-  for specifying the init-data?
-
-  See [[http://en.wikipedia.org/wiki/Dataflow_programming][dataflow-programming]]; [[http://stackoverflow.com/questions/4565158/using-clojure-dataflow-programming-idioms][in Clojure]]; [[http://richhickey.github.com/clojure-contrib/dataflow-api.html][API]]. [[http://upload.wikimedia.org/wikipedia/en/3/33/FBP_3_block_diagram.jpg][Block diagramm]].
-
-  [[http://ditaa.sourceforge.net/][ditaa]] is what I'm talking about: parse it and input it. [[https://github.com/stathissideris/ditaa][Source]]. Take
-  a look at [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/core/CommandLineConverter.java#L222][this]]; basically:
-
-  #+BEGIN_SRC java
-    TextGrid grid = new TextGrid();
-    grid.loadFrom(fromFilename, options.processingOptions);
-    Diagram diagram = new Diagram(grid, options);
-    
-    // Don't need the following if we're just parsing the file.
-    RenderedImage image = new BitmapRenderer().renderToImage(diagram, options.renderingOptions);
-    ImageIO.write(image, "png", os);
-  #+END_SRC
-
-  And thence: [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/Diagram.java#L894][diagram.getShapeIterator]]; also [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/DiagramShape.java#L500][shape.getEdges]]; also
-  [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L149][edge.getOwner]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][shape.getEndPoint]], [[https://github.com/stathissideris/ditaa/blob/master/src/org/stathissideris/ascii2image/graphics/ShapeEdge.java#L121][edge.getStartPoint]].
-
-  #+BEGIN_SRC clojure :tangle task-spec.clj
-    (load "make-uuid-md5s.clj")
-    
-    (import '(hewtoy UUIDToMD5Mapper
-                     UUIDToMD5Mapper
-                     MD5AndPayloadJoiner))
-    
-    ;; (shell-task make-uuid-md5s "md5-uuid.sh")
-    
-    (map-reduce-task map-uuid-to-md5
-                     UUIDToMD5Mapper
-                     :dependencies (make-uuid-md5s))
-    
-    (map-reduce-task map-uuid-to-payload
-                     UUIDToMD5Mapper
-                     :dependencies (make-uuid-md5s))
-    
-    (map-reduce-task join-md5-and-payload
-                     MD5AndPayloadJoiner
-                     :dependencies (map-uuid-to-md5
-                                    map-uuid-to-payload))
-    
-    (dependencies
-     (join-md5-and-payload
-      (map-uuid-to-md5
-       make-uuid-md5s)
-      (map-uuid-to-payload
-       make-uuid-md5s)))
-    
-  #+END_SRC
-
-  Change TaskQueue port from 8080 to 8081; parameters to TaskQueue:
-  optional parameter on the command line: API server, port, name of
-  the resource.
-
-  When run locally, next won't get kicked off (unless the consumer is
-  running, in which case the consumer will pick it up). Quick
-  iteration on one job: jump start that one, see it run, &c.
-
-  #+BEGIN_SRC java
-    Q.addTask(i0);
-    
-    // Run right here, right now; limitation: not going to go to
-    // next. Advantage: don't have to create uberjar.
-    //
-    // Creates data in $PWD.
-    Q.jumpStart(i0);    
-  #+END_SRC
-
-  #+BEGIN_SRC clojure
-    ;;; Multimethod: second argument possibly a sequence.
-    (depend-on [map-uuid-to-md5
-                map-uuid-to-payload]
-               make-uuid-md5s)
-  #+END_SRC
-
-  #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
-    (use 'add-classpath.core)
-    
-    (add-classpath "lib/*")
-    (add-classpath "lib/dev/*")
-    
-    (use 'debug.core)
-    (use 'cadr.core)
-    (use 'lambda.core)
-    (use 'clojure.set)
-    (import '(vineyard.hadoop MapReduceTask)
-            '(vineyard.shell ShellTask)
-            '(vineyard Task
-                       TaskQueue)
-            '(hewtoy MD5AndPayloadJoiner
-                     UUIDToPayloadMapper
-                     UUIDToMD5Mapper))
-    
-    (defn make-map-reduce-task [name class input output]
-      (doto (MapReduceTask.)
-        (.setInitData "input_path" input)
-        (.setInitData "output_path" output)
-        (.setInitData "mr_job_name" name)
-        (.setInitData "mr_job_class" (.getCanonicalName class))))
-    
-    (defn make-shell-task [path]
-      (doto (ShellTask.)
-        (.setInitData ShellTask/SHELL_CMD_KEY path)))
-    
-    (defrecord node [task children parents])
-    
-    (defn make-node [task]
-      (node. task (atom #{}) (atom #{})))
-    
-    (def table
-      {'join-md5-and-payload (make-node
-                              (make-map-reduce-task
-                               "join-md5-and-payload"
-                               MD5AndPayloadJoiner
-                               "uuid-to-payload,uuid-to-md5"
-                               "md5-and-payload"))
-       'map-uuid-to-md5 (make-node
-                         (make-map-reduce-task
-                          "map-uuid-to-md5"
-                          UUIDToMD5Mapper
-                          "md5-to-uuid"
-                          "uuid-to-md5"))
-       'map-uuid-to-payload (make-node
-                             (make-map-reduce-task
-                              "map-uuid-to-payload"
-                              UUIDToPayloadMapper
-                              "md5-to-uuid"
-                              "uuid-to-payload"))
-       'make-uuid-md5s (make-node
-                        (make-shell-task
-                         "./make-md5-to-uuid.sh"))})
-    
-    ;;; Don't have a graph yet; this is just a tree. Need to do
-    ;;; table-lookup for idempotency.
-    (let [graph '(join-md5-and-payload
-                  (map-uuid-to-md5
-                   make-uuid-md5s)
-                  (map-uuid-to-payload
-                   make-uuid-md5s))]
-      (letfn [(plumb [parents graph]
-                ;; (debug graph)
-                (if (list? graph)
-                  (let [parent (get table (car graph))
-                        children (cdr graph)]
-                    (do
-                      ;; (debug parent parents children)
-                      (doseq [child children]
-                        (plumb (cons parent parents) child))))
-                  (do
-                    ;; (debug 'leaf
-                    ;;        parents
-                    ;;        (get table graph))
-                    (loop [child (get table graph)
-                           parents parents]
-                      (if (not (empty? parents))
-                        (let [parent (car parents)]
-                          (do
-                            (swap! (:parents child)
-                                   (fn [parents]
-                                     (conj parents parent)))
-                            (swap! (:children parent)
-                                     (fn [children]
-                                       (conj children child)))
-                              (recur (car parents)
-                                     (cdr parents)))))))))]
-        (plumb nil graph)
-        #_(doseq [[task node] table] (debug task node))
-        (letfn [(sort [graph]
-                  (let [sources
-                        (filter (λ [node]
-                                  (zero? (count (deref (:parents node)))))
-                                (vals table))
-                        sortita (atom nil)]
-                    #_(debug (map :name sources))
-                    (loop [parents (set sources)
-                           sortita nil]
-                      (if (empty? parents)
-                        sortita
-                        (let [parent (car parents)
-                              children (deref (:children parent))]
-                          (doseq [child children]
-                            (swap! (:parents child)
-                                   (λ [parents]
-                                     (disj parents parent))))
-                          (let [sources
-                                (filter (λ [node]
-                                          (zero? (count (deref (:parents node)))))
-                                        children)]
-                            (recur (union (set sources)
-                                          (disj parents parent))
-                                   (cons parent sortita))))))))]
-          (let [tasks (map :task (sort graph))] 
-            (loop [task (car tasks)
-                   next-tasks (cdr tasks)]
-              (if (not (empty? next-tasks))
-                (let [next-task (car next-tasks)]
-                  (.addNext task next-task)
-                  (recur next-task (cdr next-tasks)))))
-            (.runAll (TaskQueue. "task07" 8081 "topo-sort")
-                     (first tasks))
-            #_(.jumpStart (TaskQueue. "task07" 8081 "topo-sort")
-                          (cadr tasks))
-            (doseq [task tasks]
-              (debug (.getId task)))))))
-    
-  #+END_SRC
-
-  Need to come up with a [[http://en.wikipedia.org/wiki/Minimum_spanning_tree][minimum spanning tree]], and some kind of
-  symbol \to task mapping? That way, when we begin at the leaves; or:
-  should we construct the tree such that Vineyard begins at the
-  leaves?
-
-  Do we need a step in the process which creates anonymous
-  intermediate nodes?
-
-  In clojure, we can't easily modify a list; therefore, might need
-  some kind of ad-hoc graph structure where we can remove nodes, &c.?
-
-  #+BEGIN_SRC clojure :tangle records.clj :shebang #!/usr/bin/env clj
-    (use 'clojure.test)
-    (defrecord harro [yes])
-    (def harro-0 (harro. 0))
-    
-    ;;; Local (non-mutative) association
-    (is (:yes (assoc harro-0 :yes 1) 1))
-    
-    ;;; Original the same
-    (is (:yes harro-0) 0)
-    
-    (defrecord omg [for-reals])
-    (def wirklich (omg. (atom 1)))
-    
-    ;;; Pre-mutation
-    (is (deref (:for-reals wirklich)) 1)
-    
-    (swap! (:for-reals wirklich)
-           (fn [for-reals] (+ 1 for-reals)))
-    
-    ;;; Post-mutation
-    (is (deref (:for-reals wirklich)) 2)
-    
-  #+END_SRC
 * DONE Attach-geocode POC
   CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_EXAMPLE

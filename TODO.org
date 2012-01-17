@@ -23,7 +23,8 @@
                (.setInitData "mr_job_class" (.getCanonicalName (class job)))))
     
   #+END_SRC
-* TODO Job-spec
+* DONE Job-spec
+  CLOSED: [2012-01-17 Tue 15:17]
   Two functions: a =defjob= which takes a symbol, qualified class name
   and optional metadata (should be exported into a namespace for
   composability); =set-dependencies!= which takes a dependency graph

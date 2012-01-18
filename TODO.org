@@ -2,6 +2,27 @@
   Extract dedupe as library; generalize dedupe. Let's Vineyardize HEW
   without HEW knowing.
 
+  #+BEGIN_SRC clojure :tangle hew-sans-sans-sans-vineyard.clj
+    (use 'add-classpath.core)
+    (add-classpath "lib/*")
+    (add-classpath "lib/dev/*")
+    (use 'debug.core)
+    (use 'napa.core)
+    
+    (import '(mapreduce.tasks ConvertGeocodingResultsToTab)
+            '(vineyard.hadoop MapReduceJobCreator
+                              MapReduceTask)
+            '(vineyard Task
+                       TaskQueue))
+    
+    (debug (.getCanonicalName (class job)) x)
+    
+    (.runAll (TaskQueue. "task07" 8081 "test")
+             (doto (MapReduceTask.)
+               (.setInitData "mr_job_class" (.getName napa.core))))
+    
+  #+END_SRC
+
   #+BEGIN_SRC clojure :tangle hew-sans-vineyard.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     (add-classpath "lib/*")
@@ -32,32 +53,32 @@
 
   #+BEGIN_SRC clojure
     (load-file "othertoy.clj")
-    
+
     (defn def-task [class init-data]
       (doto (new class)
         (set-init-data)))
-    
+
     (defn def-hadoop-task []
       (def-task MapReduceTask {:blah "blah"}))
-    
+
     (defn def-shell-task [command]
       )
-    
-    
+
+
     (deftask make-uuid-md5s hewtoy/UUIDMD5Maker)
-    
+
     (deftask ^{:dependencies [make-uuid-md5s]
                :input-path "some-input-path"
                :task-type hadoop}
       uuid-to-payload-mapper hewtoy/UUIDToPayloadMapper)
-    
+
     (deftask ^{:dependencies [make-uuid-md5s]}
       uuid-to-md5-mapper hewtoy/UUIDToMD5Mapper)
-    
+
     (deftask md5-and-payload-joiner hewtoy/MD5AndPayloadJoiner)
-    
+
     (deftask ls-tmp hewtoy/NewLS)
-    
+
     (set-dependencies!
      (md5-and-payload-joiner
       ((uuid-to-md5-mapper
@@ -65,9 +86,9 @@
        (uuid-to-payload-mapper
         make-uuid-md5s
         randomtask))))
-    
+
     (set-root! md5-and-payload-joiner)
-    
+
   #+END_SRC
 
   Build out the root; send the root to vineyard. Have hadoop consumers
@@ -128,7 +149,7 @@
     TextGrid grid = new TextGrid();
     grid.loadFrom(fromFilename, options.processingOptions);
     Diagram diagram = new Diagram(grid, options);
-    
+
     // Don't need the following if we're just parsing the file.
     RenderedImage image = new BitmapRenderer().renderToImage(diagram, options.renderingOptions);
     ImageIO.write(image, "png", os);
@@ -139,33 +160,33 @@
 
   #+BEGIN_SRC clojure :tangle task-spec.clj
     (load "make-uuid-md5s.clj")
-    
+
     (import '(hewtoy UUIDToMD5Mapper
                      UUIDToMD5Mapper
                      MD5AndPayloadJoiner))
-    
+
     ;; (shell-task make-uuid-md5s "md5-uuid.sh")
-    
+
     (map-reduce-task map-uuid-to-md5
                      UUIDToMD5Mapper
                      :dependencies (make-uuid-md5s))
-    
+
     (map-reduce-task map-uuid-to-payload
                      UUIDToMD5Mapper
                      :dependencies (make-uuid-md5s))
-    
+
     (map-reduce-task join-md5-and-payload
                      MD5AndPayloadJoiner
                      :dependencies (map-uuid-to-md5
                                     map-uuid-to-payload))
-    
+
     (dependencies
      (join-md5-and-payload
       (map-uuid-to-md5
        make-uuid-md5s)
       (map-uuid-to-payload
        make-uuid-md5s)))
-    
+
   #+END_SRC
 
   Change TaskQueue port from 8080 to 8081; parameters to TaskQueue:
@@ -178,12 +199,12 @@
 
   #+BEGIN_SRC java
     Q.addTask(i0);
-    
+
     // Run right here, right now; limitation: not going to go to
     // next. Advantage: don't have to create uberjar.
     //
     // Creates data in $PWD.
-    Q.jumpStart(i0);    
+    Q.jumpStart(i0);
   #+END_SRC
 
   #+BEGIN_SRC clojure
@@ -195,10 +216,10 @@
 
   #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
-    
+
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-    
+
     (use 'debug.core)
     (use 'cadr.core)
     (use 'lambda.core)
@@ -210,23 +231,23 @@
             '(hewtoy MD5AndPayloadJoiner
                      UUIDToPayloadMapper
                      UUIDToMD5Mapper))
-    
+
     (defn make-map-reduce-task [name class input output]
       (doto (MapReduceTask.)
         (.setInitData "input_path" input)
         (.setInitData "output_path" output)
         (.setInitData "mr_job_name" name)
         (.setInitData "mr_job_class" (.getCanonicalName class))))
-    
+
     (defn make-shell-task [path]
       (doto (ShellTask.)
         (.setInitData ShellTask/SHELL_CMD_KEY path)))
-    
+
     (defrecord node [task children parents])
-    
+
     (defn make-node [task]
       (node. task (atom #{}) (atom #{})))
-    
+
     (def table
       {'join-md5-and-payload (make-node
                               (make-map-reduce-task
@@ -249,7 +270,7 @@
        'make-uuid-md5s (make-node
                         (make-shell-task
                          "./make-md5-to-uuid.sh"))})
-    
+
     ;;; Don't have a graph yet; this is just a tree. Need to do
     ;;; table-lookup for idempotency.
     (let [graph '(join-md5-and-payload
@@ -309,7 +330,7 @@
                             (recur (union (set sources)
                                           (disj parents parent))
                                    (cons parent sortita))))))))]
-          (let [tasks (map :task (sort graph))] 
+          (let [tasks (map :task (sort graph))]
             (loop [task (car tasks)
                    next-tasks (cdr tasks)]
               (if (not (empty? next-tasks))
@@ -322,7 +343,7 @@
                           (cadr tasks))
             (doseq [task tasks]
               (debug (.getId task)))))))
-    
+
   #+END_SRC
 
   Need to come up with a [[http://en.wikipedia.org/wiki/Minimum_spanning_tree][minimum spanning tree]], and some kind of
@@ -340,39 +361,39 @@
     (use 'clojure.test)
     (defrecord harro [yes])
     (def harro-0 (harro. 0))
-    
+
     ;;; Local (non-mutative) association
     (is (:yes (assoc harro-0 :yes 1) 1))
-    
+
     ;;; Original the same
     (is (:yes harro-0) 0)
-    
+
     (defrecord omg [for-reals])
     (def wirklich (omg. (atom 1)))
-    
+
     ;;; Pre-mutation
     (is (deref (:for-reals wirklich)) 1)
-    
+
     (swap! (:for-reals wirklich)
            (fn [for-reals] (+ 1 for-reals)))
-    
+
     ;;; Post-mutation
     (is (deref (:for-reals wirklich)) 2)
-    
+
   #+END_SRC
 * DONE Given then graph, build the job.
   CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle build-job.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
-    
+
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-    
+
     (use 'debug.core)
     (use 'lambda.core)
     (use 'cadr.core)
     (use 'clojure.test)
-    
+
     (import '(vineyard.hadoop MapReduceTask)
             '(vineyard.shell ShellTask)
             '(vineyard Task
@@ -380,18 +401,18 @@
             '(hewtoy MD5AndPayloadJoiner
                      UUIDToPayloadMapper
                      UUIDToMD5Mapper))
-    
+
     (defn make-map-reduce-task [name class input output]
       (doto (MapReduceTask.)
         (.setInitData "input_path" input)
         (.setInitData "output_path" output)
         (.setInitData "mr_job_name" name)
         (.setInitData "mr_job_class" (.getCanonicalName class))))
-    
+
     (defn make-shell-task [path]
       (doto (ShellTask.)
         (.setInitData ShellTask/SHELL_CMD_KEY path)))
-    
+
     (defλ tree->graph [tree]
       (let [child->parents (transient {})
             parent->children (transient {})]
@@ -428,17 +449,17 @@
           (plumb! nil tree)
           {:child->parents (persistent! child->parents)
            :parent->children (persistent! parent->children)})))
-    
+
     #_(defλ run-tree [tree]
         (let [graph (tree->graph tree)
               tasks (map :task (topological-sort graph))]
           (.runAll (TaskQueue. *default-host* *default-port* *default-resource*)
                    (car tasks))))
-    
+
     (import '(hewtoy UUIDToMD5Mapper
                      UUIDToMD5Mapper
                      MD5AndPayloadJoiner))
-    
+
     ;;; These procedures are distinct from the DSL that invokes them.
     (def join-md5-and-payload
       (make-map-reduce-task
@@ -446,30 +467,30 @@
        MD5AndPayloadJoiner
        "uuid-to-payload,uuid-to-md5"
        "md5-and-payload"))
-    
+
     (def map-uuid-to-md5
       (make-map-reduce-task
        "map-uuid-to-md5"
        UUIDToMD5Mapper
        "md5-to-uuid"
        "uuid-to-md5"))
-    
+
     (def map-uuid-to-payload
       (make-map-reduce-task
        "map-uuid-to-payload"
        UUIDToPayloadMapper
        "md5-to-uuid"
        "uuid-to-payload"))
-    
+
     (def make-uuid-md5s
       (make-shell-task
        "./make-md5-to-uuid.sh"))
-    
+
     (defλ task-table [tasks]
       (reduce (λ [table task] (assoc table task (eval task)))
               {}
               tasks))
-    
+
     (defλ build-job [parent->children root tasks]
       (let [queue (atom (clojure.lang.PersistentQueue/EMPTY))
             visited (transient #{})]
@@ -487,11 +508,11 @@
                     (conj! visited child)
                     (swap! queue (λ [queue] (conj queue child)))))))))
         (get tasks root)))
-    
+
     (def ^:dynamic *default-host* "task07")
     (def ^:dynamic *default-port* 8081)
     (def ^:dynamic *default-resource* "test")
-    
+
     (let [{:keys [child->parents parent->children]}
           (tree->graph
            '(join-md5-and-payload
@@ -506,7 +527,7 @@
       (let [root (build-job parent->children 'join-md5-and-payload tasks)]
         (.runAll (TaskQueue. *default-host* *default-port* *default-resource*)
                  root)))
-    
+
   #+END_SRC
 * DONE We could actually do topo without repetition if we had ordered sets.
   CLOSED: [2012-01-13 Fri 14:04]
@@ -516,15 +537,15 @@
   CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle tree-to-graph.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
-    
+
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-    
+
     (use 'debug.core)
     (use 'lambda.core)
     (use 'cadr.core)
     (use 'clojure.test)
-    
+
     ;;; We can also implement a destructive topological sort with
     ;;; `transient', by the way. Or not: can't iterate over them, or even
     ;;; extract the keys.
@@ -564,11 +585,11 @@
           (plumb! nil tree)
           {:child->parents (persistent! child->parents)
            :parent->children (persistent! parent->children)})))
-    
+
     (defλ sinks [parent->children]
       (map car (filter (λ [[parent children]] (zero? (count children)))
                        parent->children)))
-    
+
     ;;; These don't give me sinks, by the way: merely symmetrical links.
     (defλ topological-sort [child->parents parent->children]
       (let [sinks (sinks parent->children)
@@ -583,26 +604,26 @@
                       (conj! sortita child))))]
           (doseq [sink sinks] (visit sink)))
         (persistent! sortita)))
-    
+
     (let [tree '(a (b d) (c d))
           {:keys [child->parents parent->children]} (tree->graph tree)]
       (is (= (topological-sort child->parents parent->children)
              '[a c a b d])))
-    
+
   #+END_SRC
 * DONE Implement task-spec.
   CLOSED: [2012-01-13 Fri 14:04]
   #+BEGIN_SRC clojure :tangle task-spec.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
-    
+
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-    
+
     (use 'debug.core)
     (use 'cadr.core)
     (use 'lambda.core)
     (use 'clojure.set)
-    
+
     (import '(vineyard.hadoop MapReduceTask)
             '(vineyard.shell ShellTask)
             '(vineyard Task
@@ -610,23 +631,23 @@
             '(hewtoy MD5AndPayloadJoiner
                      UUIDToPayloadMapper
                      UUIDToMD5Mapper))
-    
+
     (defn make-map-reduce-task [name class input output]
       (doto (MapReduceTask.)
         (.setInitData "input_path" input)
         (.setInitData "output_path" output)
         (.setInitData "mr_job_name" name)
         (.setInitData "mr_job_class" (.getCanonicalName class))))
-    
+
     (defn make-shell-task [path]
       (doto (ShellTask.)
         (.setInitData ShellTask/SHELL_CMD_KEY path)))
-    
+
     (defrecord node [task children parents])
-    
+
     (defn make-node [task]
       (node. task (atom #{}) (atom #{})))
-    
+
     ;;; This should somehow return an adjacency list and root; can we
     ;;; `assoc!' a children and parent map along the way, finally do
     ;;; `make-node' on the maps and designating a root? We need a third
@@ -662,7 +683,7 @@
                               (conj children child)))
                      (recur (car parents)
                             (cdr parents))))))))))
-    
+
     (defλ topological-sort [graph]
       (let [sources
             (filter (λ [node]
@@ -686,21 +707,21 @@
                 (recur (union (set sources)
                               (disj parents parent))
                        (cons parent sortita))))))))
-    
+
     (def ^:dynamic *default-host* "task07")
     (def ^:dynamic *default-port* "8081")
     (def ^:dynamic *default-resource* "test")
-    
+
     (defλ run-tree [tree]
       (let [graph (tree->graph tree)
             tasks (map :task (topological-sort graph))]
         (.runAll (TaskQueue. *default-host* *default-port* *default-resource*)
                  (car tasks))))
-    
+
     (import '(hewtoy UUIDToMD5Mapper
                      UUIDToMD5Mapper
                      MD5AndPayloadJoiner))
-    
+
     ;;; These procedures are distinct from the DSL that invokes them.
     (def join-md5-and-payload
       (make-map-reduce-task
@@ -708,32 +729,32 @@
        MD5AndPayloadJoiner
        "uuid-to-payload,uuid-to-md5"
        "md5-and-payload"))
-    
+
     (def map-uuid-to-md5
       (make-map-reduce-task
        "map-uuid-to-md5"
        UUIDToMD5Mapper
        "md5-to-uuid"
        "uuid-to-md5"))
-    
+
     (def map-uuid-to-payload
       (make-map-reduce-task
        "map-uuid-to-payload"
        UUIDToPayloadMapper
        "md5-to-uuid"
        "uuid-to-payload"))
-    
+
     (def make-uuid-md5s
       (make-shell-task
        "./make-md5-to-uuid.sh"))
-    
+
     (tree->graph
      [join-md5-and-payload
       [map-uuid-to-md5
        make-uuid-md5s]
       [map-uuid-to-payload
        make-uuid-md5s]])
-    
+
   #+END_SRC
 
   Some node-aware post-processing that e.g. sets the input/output
@@ -794,11 +815,11 @@
 
   #+BEGIN_SRC sh :tangle make-md5-to-uuid.sh :shebang #!/usr/bin/env bash
     n=${@:-100}
-    
+
     for ((i = 0; i < n; i++)); do
         echo $(echo -n $i | openssl md5 | cut -d ' ' -f 2),$i
     done > md5-to-uuid
-    
+
   #+END_SRC
 
   #+BEGIN_SRC clojure :tangle md5-uuid.clj :shebang #!/usr/bin/env clj
@@ -808,11 +829,11 @@
     (use 'debug.core)
     (use 'clojure.java.io)
     (use 'clojure.string)
-    
+
     (doseq [line (line-seq (reader "md5-uuid.txt"))]
       (let [[md5 uuid] (split line #",")]
         (println (format "%s\t%s" md5 uuid))))
-    
+
   #+END_SRC
 
   #+BEGIN_SRC clojure :tangle uuid-data.clj :shebang #!/usr/bin/env clj
@@ -823,25 +844,25 @@
     (use 'clojure.java.io)
     (use 'clojure.string)
     (use 'clojure.data.json)
-    
+
     (doseq [line (line-seq (reader *in*))]
       (let [[md5 uuid] (split line #"\t")]
         (println (format "%s\t%s" uuid (json-str {:uuid uuid})))))
-    
+
   #+END_SRC
 
   #+BEGIN_SRC java :tangle UUIDToMD5Mapper.java
     import java.io.IOException;
-    
+
     import org.apache.hadoop.fs.Path;
     import org.apache.hadoop.mapred.*;
     import org.apache.hadoop.mapred.lib.*;
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
-    
+
     public class UUIDToMD5Mapper {
-    
+
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
@@ -856,7 +877,7 @@
                                new Text(String.format("md5: %s", MD5)));
             }
         }
-    
+
         public static void main(String[] argv) throws IOException {
             JobConf conf = new JobConf(UUIDToMD5Mapper.class);
             conf.setJobName("map-uuid-to-md5");
@@ -872,33 +893,33 @@
             JobClient.runJob(conf);
         }
     }
-    
+
   #+END_SRC
 
   #+BEGIN_SRC sh :tangle map-uuid-to-md5.sh :shebang #!/usr/bin/env bash
     org-tangle TODO.org && \
         rm -frv uuid-to-md5 && \
         mkdir -v UUIDToMD5Mapper-classes;
-    
+
     javac -cp $(hadoop classpath) -d UUIDToMD5Mapper-classes UUIDToMD5Mapper.java && \
         jar -cvf UUIDToMD5Mapper.jar -C UUIDToMD5Mapper-classes . && \
         hadoop jar UUIDToMD5Mapper.jar UUIDToMD5Mapper && \
         hadoop fs -cat uuid-to-md5/*
-    
+
   #+END_SRC
 
   #+BEGIN_SRC java :tangle UUIDToPayloadMapper.java
     import java.io.IOException;
-    
+
     import org.apache.hadoop.fs.Path;
     import org.apache.hadoop.mapred.*;
     import org.apache.hadoop.mapred.lib.*;
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
-    
+
     public class UUIDToPayloadMapper {
-    
+
         public static class Map extends MapReduceBase
             implements Mapper<LongWritable, Text, Text, Text> {
             public void map(LongWritable key,
@@ -914,7 +935,7 @@
                                                       System.currentTimeMillis())));
             }
         }
-    
+
         public static void main(String[] argv) throws IOException {
             JobConf conf = new JobConf(UUIDToPayloadMapper.class);
             conf.setJobName("map-uuid-to-payload");
@@ -930,19 +951,19 @@
             JobClient.runJob(conf);
         }
     }
-    
+
   #+END_SRC
 
   #+BEGIN_SRC sh :tangle map-uuid-to-payload.sh :shebang #!/usr/bin/env bash
     org-tangle TODO.org && \
         rm -frv uuid-to-payload && \
         mkdir -v UUIDToPayloadMapper-classes;
-    
+
     javac -cp $(hadoop classpath) -d UUIDToPayloadMapper-classes UUIDToPayloadMapper.java && \
         jar -cvf UUIDToPayloadMapper.jar -C UUIDToPayloadMapper-classes . && \
         hadoop jar UUIDToPayloadMapper.jar UUIDToPayloadMapper && \
         hadoop fs -cat uuid-to-payload/*
-    
+
   #+END_SRC
 
   Swap it: "UUID\tMD5" after the first job; input to the second job:
@@ -958,17 +979,17 @@
   #+BEGIN_SRC java :tangle MD5AndPayloadJoiner.java
     import java.io.IOException;
     import java.util.*;
-    
+
     import org.apache.commons.logging.Log;
     import org.apache.commons.logging.LogFactory;
-    
+
     import org.apache.hadoop.fs.Path;
     import org.apache.hadoop.mapred.*;
     import org.apache.hadoop.mapred.lib.*;
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
-    
+
     public class MD5AndPayloadJoiner {
         public static class Reduce extends MapReduceBase
             implements Reducer<Text, Text, Text, Text> {
@@ -984,7 +1005,7 @@
                 output.collect(UUID, new Text(data.toString()));
             }
         }
-    
+
         public static void main(String[] argv) throws IOException {
             JobConf conf = new JobConf(MD5AndPayloadJoiner.class);
             conf.setJobName("map-uuid-to-payload");
@@ -1001,19 +1022,19 @@
             JobClient.runJob(conf);
         }
     }
-    
+
   #+END_SRC
 
   #+BEGIN_SRC sh :tangle join-md5-and-payload.sh :shebang #!/usr/bin/env bash
     org-tangle TODO.org && \
         rm -frv md5-and-payload && \
         mkdir -v MD5AndPayloadJoiner-classes;
-    
+
     javac -cp $(hadoop classpath):classes -d MD5AndPayloadJoiner-classes MD5AndPayloadJoiner.java && \
         jar -cvf MD5AndPayloadJoiner.jar -C MD5AndPayloadJoiner-classes . && \
         hadoop jar MD5AndPayloadJoiner.jar MD5AndPayloadJoiner && \
         hadoop fs -cat md5-and-payload/*
-    
+
   #+END_SRC
 
   - https://github.com/Factual/vineyard/blob/master/hadoop/src/main/java/vineyard/hadoop/demojob/WordCounter.java
@@ -1044,14 +1065,14 @@
         java -cp /tmp/clojure-hadoop-new/clojure-hadoop-1.3.1-SNAPSHOT-standalone.jar \
           org.apache.hadoop.fs.FsShell \
           -text /tmp/wirklich/part-r-00000
-    
+
   #+END_SRC
 * CANCELED Example with clojure-hadoop
   CLOSED: [2011-12-30 Fri 10:51]
   #+BEGIN_SRC clojure :tangle hadoop.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
     (add-classpath "lib/*")
-    
+
   #+END_SRC
 * CANCELED Hadoop in beanshell?
   CLOSED: [2011-12-30 Fri 10:51]
@@ -1082,19 +1103,19 @@
     addClassPath("lib/oro-2.0.8.jar");
     addClassPath("lib/servlet-api-2.5-6.1.14.jar");
     addClassPath("lib/xmlenc-0.52.jar");
-    
+
     import java.util.*;
-    
+
     import org.apache.hadoop.fs.Path;
     import org.apache.hadoop.mapred.*;
     import org.apache.hadoop.conf.*;
     import org.apache.hadoop.io.*;
     import org.apache.hadoop.util.*;
-    
+
     class Map extends MapReduceBase implements Mapper {
         one = new IntWritable(1);
         word = new Text();
-    
+
         map(key, value, output, reporter) {
             line = value.toString();
             tokenizer = new StringTokenizer(line);
@@ -1104,7 +1125,7 @@
             }
         }
     }
-    
+
     class Reduce extends MapReduceBase implements Reducer {
         reduce(key, values, output, reporter) {
             int sum = 0;
@@ -1114,24 +1135,24 @@
             output.collect(key, new IntWritable(sum));
         }
     }
-    
+
     conf = new JobConf();
     conf.setJobName("wordcount");
     conf.setOutputKeyClass(Text.class);
     conf.setOutputValueClass(IntWritable.class);
-    
+
     conf.setMapperClass(Map.class);
     conf.setCombinerClass(Reduce.class);
     conf.setReducerClass(Reduce.class);
-    
+
     conf.setInputFormat(TextInputFormat.class);
     conf.setOutputFormat(TextOutputFormat.class);
-    
+
     FileInputFormat.setInputPaths(conf, new Path("in"));
     FileInputFormat.setOutputPath(conf, new Path("out"));
-    
+
     JobClient.runJob(conf);
-    
+
   #+END_SRC
 * CANCELED Analogy with cascalag-checkpoint
   CLOSED: [2011-12-30 Fri 10:51]
@@ -1141,7 +1162,7 @@
   Props to Chun for pointing this out. Has some striking parallels to
   some of our requirements, so maybe a great source of inspiration for
   syntax. http://sritchie.github.com/2011/11/15/introducing-cascalogcontrib.html
-                                                                                                                                                                                                                                                                                                                                                                                                                                         
+
   Notice for example there's an implicit naming convention for
   specifying sub tasks that run in parallel, vs. in series.
   #+END_QUOTE
@@ -1167,12 +1188,12 @@
     (deftask b ...)
     (deftask c ...)
     ...
-    
+
     (make-task-tree!
      (a
       (b
        (c d e))))
-    
+
     (make-dependency-tree!
      (a
       (b)))
@@ -1207,39 +1228,39 @@
   #+BEGIN_SRC clojure
     (defn hadoop-counter [counter-name]
       ...)
-    
+
     (defn call-with-hadoop-conditions [f]
       (f *hadoop-conditions*))
-    
+
     (defn non-zero-hadoop-conditions? []
       (call-with-hadoop-conditions
         (fn [hadoop-conditions]
           (> (count hadoop-conditions) 0))))
-    
+
     (if (non-zero-hadoop-conditions?)
       (throw ...Exception))
-    
+
     (defn get-hadoop-job [vineyard-task]
       (...))
-    
+
     (defn get-hadoop-counter [vineyard-task counter-name]
       (...))
-    
+
     (defn get-hadoop-property [vineyard-ask property-name]
       (...))
-    
+
     (> (get-hadoop-counter *vineyard-task* "foo") 0)
-    
+
     (defn hdfs-file-exists? [vineyard-task path]
       ;; Check for the existence of _SUCCESS.
       (...))
-    
+
     (hdfs-file-exists? *vineyard-task* "/path/to/dedupe")
-    
+
     ;;; Inside pre-dedupe-analysis; path defaults to "/path/to/dedupe". In
     ;;; other words, "does the default input path of my parent exist?"
     (hdfs-file-parent-exists? *vineyard-task*)
-    
+
   #+END_SRC
 
   [[http://wiki.corp.factual.com/display/INFRA/Vineyard+Java+Driver][Vineyard Java client]]. MapReduce jobs in Clojure? And pre-existing
@@ -1276,17 +1297,17 @@
          assignUuidsToGeocodingResults,
          combineDedupedAndGeocodingData,
          performFinalPostprocessing,
-    
+
          computeUuidRetentionMapping,
          removeOverfoldingRetainedUuids,
          applyUuidRetentionMapping,
-    
+
          exportData,
          exportDataQA,
-    
+
          uuidRetentionTracker
          );
-    
+
   #+END_SRC
 
   [[http://d22.factual.com.:50075/browseDirectory.jsp?dir=%2Fapps%2Fextract%2Fpoi%2FUnitedKingdomScarecrow%2Foutput%2Fleo_uuid_test&namenodeInfoPort=50070&delegation=null][Output]].
@@ -1347,16 +1368,16 @@
        export-data
        export-data-qa
        uuid-retention-tracker)))
-    
+
     ;;; Precedence
     (dedupe (extract))
-    
+
     ;;; Gantt charts
-    
+
     (a
      (b
       (c d)))
-    
+
   #+END_SRC
 
 * CANCELED =yaml= to vineyard
@@ -1377,7 +1398,7 @@
 * [[http://hadoop.apache.org/common/docs/stable/mapred_tutorial.html][MapReduce tutorial]]
   When loading data, load into =DistributedCache=; [[https://github.com/stuartsierra/clojure-hadoop][clojure-hadoop]].
 * Notes
-** Mon Dec 19 16:50:50 PST 2011   
+** Mon Dec 19 16:50:50 PST 2011
    - at the end of task: check succeeded (Vineyard task); it fails;
      responsibility of the vineyard task to fail;
    - takes YAML: turns into command-line options

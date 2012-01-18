@@ -35,9 +35,12 @@
      [com.factual/geo "1.0-SNAPSHOT"]
      [com.factual/melissa-data "1.0-SNAPSHOT"]
      [com.factual/datastore-commons "1.3-SNAPSHOT"]
-                 ]
+     ]
   :repositories {"factual" "http://maven.corp.factual.com/nexus/content/groups/public"
                  "releases" "http://maven.corp.factual.com/nexus/content/repositories/releases"
                  "snapshots" "http://maven.corp.factual.com/nexus/content/repositories/snapshots"}
   :dev-dependencies [[debug "1.0.0-SNAPSHOT"]
-                     [ordered "1.0.0"]])
+                     [ordered "1.0.0"]
+                     [add-classpath "1.0.3-SNAPSHOT"]]
+  :aot [napa.core]
+  )

@@ -1,21 +1,31 @@
 (ns napa.core
-  (:use [clojure-hadoop.defjob :only (defjob)]
-        clojure-hadoop.wrap
-        clojure.string))
+  (:import (mapreduce.tasks ConvertGeocodingResultsToTab)
+           (vineyard.hadoop MapReduceJobCreator
+                            MapReduceTask)
+           (vineyard Task
+                     TaskQueue)
+           (org.apache.hadoop.conf Configuration)
+           (org.apache.hadoop.mapreduce Job))
+  (:use [debug.core])
+  (:gen-class
+   :implements [vineyard.hadoop.MapReduceJobCreator]
+   ))
 
-(defn my-map [key value]
-  (println "map: " key value)
-  (let [[md5 uuid] (split value #",")]
-    [[key [md5 uuid]]]))
+;;; Set name on each task before I submit it.
+#_(def job
+  (proxy [MapReduceJobCreator] []
+    (createJob [configuration]
+      (debug 'harro)
+      (.createJob (ConvertGeocodingResultsToTab.)))))
 
-(defn my-reduce [key values-fn]
-  (let [values (values-fn)]
-    (println "reduce: " key values)
-    (let [[md5 uuid] (first values)]
-      [[key (format "%s\t%s" md5 uuid)]])))
+#_(gen-class
+ :name napa.core.ConvertGeocoding
+ :implements [MapReduceJobCreator]
+ :prefix "cg-"
+ :methods [[createJob [Configuration] Job]])
 
-(defjob job
-  :map my-map
-  :map-reader string-map-reader
-  :reduce my-reduce
-  :input-format :text)
+#_(defn cg-createJob [configuration]
+  (.createJob (ConvertGeocodingResultsToTab.)))
+
+(defn -createJob [configuration]
+  (.createJob (ConvertGeocodingResultsToTab.)))

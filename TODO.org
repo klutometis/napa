@@ -19,6 +19,7 @@
     
     (.runAll (TaskQueue. "task07" 8081 "test")
              (doto (MapReduceTask.)
+               (.setName "ak8Iusak")
                (.setInitData "mr_job_class" (.getName napa.core))))
     
   #+END_SRC

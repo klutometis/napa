@@ -13,7 +13,7 @@
 
 ;;; Set name on each task before I submit it.
 #_(def job
-  (proxy [MapReduceJobCreator] []
+    (proxy [MapReduceJobCreator] []
     (createJob [configuration]
       (debug 'harro)
       (.createJob (ConvertGeocodingResultsToTab.)))))
@@ -27,5 +27,5 @@
 #_(defn cg-createJob [configuration]
   (.createJob (ConvertGeocodingResultsToTab.)))
 
-(defn -createJob [configuration]
+(defn -createJob [wtf configuration]
   (.createJob (ConvertGeocodingResultsToTab.)))

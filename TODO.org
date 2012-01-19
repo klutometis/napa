@@ -15,7 +15,7 @@
             '(vineyard Task
                        TaskQueue))
     
-    (debug (.getCanonicalName (class job)) x)
+    ;; (debug (.getCanonicalName (class job)) x)
     
     (.runAll (TaskQueue. "task07" 8081 "test")
              (doto (MapReduceTask.)

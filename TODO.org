@@ -208,7 +208,7 @@
     Q.jumpStart(i0);
   #+END_SRC
 
-  #+BEGIN_SRC clojure
+  #+BEGIN_SRC clojure :name foo
     ;;; Multimethod: second argument possibly a sequence.
     (depend-on [map-uuid-to-md5
                 map-uuid-to-payload]
@@ -217,10 +217,10 @@
 
   #+BEGIN_SRC clojure :tangle topological-sort.clj :shebang #!/usr/bin/env clj
     (use 'add-classpath.core)
-
+    
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
-
+    
     (use 'debug.core)
     (use 'cadr.core)
     (use 'lambda.core)
@@ -232,23 +232,23 @@
             '(hewtoy MD5AndPayloadJoiner
                      UUIDToPayloadMapper
                      UUIDToMD5Mapper))
-
+    
     (defn make-map-reduce-task [name class input output]
       (doto (MapReduceTask.)
         (.setInitData "input_path" input)
         (.setInitData "output_path" output)
         (.setInitData "mr_job_name" name)
         (.setInitData "mr_job_class" (.getCanonicalName class))))
-
+    
     (defn make-shell-task [path]
       (doto (ShellTask.)
         (.setInitData ShellTask/SHELL_CMD_KEY path)))
-
+    
     (defrecord node [task children parents])
-
+    
     (defn make-node [task]
       (node. task (atom #{}) (atom #{})))
-
+    
     (def table
       {'join-md5-and-payload (make-node
                               (make-map-reduce-task
@@ -271,7 +271,7 @@
        'make-uuid-md5s (make-node
                         (make-shell-task
                          "./make-md5-to-uuid.sh"))})
-
+    
     ;;; Don't have a graph yet; this is just a tree. Need to do
     ;;; table-lookup for idempotency.
     (let [graph '(join-md5-and-payload
@@ -344,7 +344,7 @@
                           (cadr tasks))
             (doseq [task tasks]
               (debug (.getId task)))))))
-
+    
   #+END_SRC
 
   Need to come up with a [[http://en.wikipedia.org/wiki/Minimum_spanning_tree][minimum spanning tree]], and some kind of

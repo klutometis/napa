@@ -7,37 +7,52 @@
     (add-classpath "lib/*")
     (add-classpath "lib/dev/*")
     (use 'debug.core)
-    (use 'napa.core)
+    ;; (use 'napa.core)
+    (use :reload-all 'napa.convert-geocoding)
     
     (import '(mapreduce.tasks ConvertGeocodingResultsToTab)
             '(vineyard.hadoop MapReduceJobCreator
                               MapReduceTask)
             '(vineyard Task
-                       TaskQueue))
+                       TaskQueue)
+            '(com.factual.common.hadoop Hdfs)
+            '(workflows.extract.poi UnitedStatesExtraction)
+            '(mapreduce Workflow))
     
     ;; (debug (.getCanonicalName (class job)) x)
     
-    (let [convert-geocoding (doto (MapReduceTask.)
-                              (.setInitData "mr_job_class" (.getName napa.core)))
-          convert-validation (doto (MapReduceTask.)
-                               (.setInitData "mr_job_class" (.getName napa.validation)))
-          write-uuid-retention (doto (MapReduceTask.)
-                                 (.setInitData "mr_job_class" (.getName napa.write_uuid_retention)))
-          extract-entities (doto (MapReduceTask.)
-                             (.setInitData "mr_job_class" (.getName napa.extract_entities)))
-          compute-md5s (doto (MapReduceTask.)
-                             (.setInitData "mr_job_class" (.getName napa.compute_md5s)))
-          analyze-entities (doto (MapReduceTask.)
-                             (.setInitData "mr_job_class" (.getName napa.analyze_entities)))
-          post-process (doto (MapReduceTask.)
-                         (.setInitData "mr_job_class" (.getName napa.post_process)))]
-      (.addNext convert-geocoding convert-validation)
-      (.addNext convert-validation write-uuid-retention)
-      (.addNext write-uuid-retention extract-entities)
-      (.addNext extract-entities compute-md5s)
-      (.addNext compute-md5s analyze-entities)
-      (.addNext analyze-entities post-process)
-      (.runAll (TaskQueue. "task07" 8081 "test") convert-geocoding))
+    ;; (debug (.getDeclaredMethods Workflow))
+    
+    ;; (.setAccessible
+    ;;  (.getDeclaredMethod Workflow "getConfiguration" nil) true)
+    
+    (let [extraction (UnitedStatesExtraction.)]
+      #_(debug (.getDeclaredMethods (.getClass (cast Workflow extraction)))
+             (.getClass (cast Workflow extraction)))
+      #_(debug (.getConf extraction)
+             (.getDeclaredMethods UnitedStatesExtraction))
+      (debug (.getConfiguration (cast (.getSuperclass (class extraction)) extraction)))
+      (let [convert-geocoding (doto (MapReduceTask.)
+                                (.setInitData "mr_job_class" (.getName napa.convert_geocoding)))
+            convert-validation (doto (MapReduceTask.)
+                                 (.setInitData "mr_job_class" (.getName napa.validation)))
+            write-uuid-retention (doto (MapReduceTask.)
+                                   (.setInitData "mr_job_class" (.getName napa.write_uuid_retention)))
+            extract-entities (doto (MapReduceTask.)
+                               (.setInitData "mr_job_class" (.getName napa.extract_entities)))
+            compute-md5s (doto (MapReduceTask.)
+                           (.setInitData "mr_job_class" (.getName napa.compute_md5s)))
+            analyze-entities (doto (MapReduceTask.)
+                               (.setInitData "mr_job_class" (.getName napa.analyze_entities)))
+            post-process (doto (MapReduceTask.)
+                           (.setInitData "mr_job_class" (.getName napa.post_process)))]
+        (.addNext convert-geocoding convert-validation)
+        (.addNext convert-validation write-uuid-retention)
+        (.addNext write-uuid-retention extract-entities)
+        (.addNext extract-entities compute-md5s)
+        (.addNext compute-md5s analyze-entities)
+        (.addNext analyze-entities post-process)
+        (.runAll (TaskQueue. "task07" 8081 "test") convert-geocoding)))
     
     
   #+END_SRC

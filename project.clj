@@ -42,5 +42,11 @@
   :dev-dependencies [[debug "1.0.0-SNAPSHOT"]
                      [ordered "1.0.0"]
                      [add-classpath "1.0.3-SNAPSHOT"]]
-  :aot [napa.core]
+  :aot [napa.convert-geocoding
+        napa.validation
+        napa.write-uuid-retention
+        napa.extract-entities
+        napa.compute-md5s
+        napa.analyze-entities
+        napa.post-process]
   )

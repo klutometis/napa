@@ -27,5 +27,7 @@
 #_(defn cg-createJob [configuration]
   (.createJob (ConvertGeocodingResultsToTab.)))
 
-(defn -createJob [wtf configuration]
-  (.createJob (ConvertGeocodingResultsToTab.)))
+#_(defn -createJob [wtf configuration]
+  (debug (.createJob (ConvertGeocodingResultsToTab.)))
+  (.createJob (ConvertGeocodingResultsToTab.))
+  )

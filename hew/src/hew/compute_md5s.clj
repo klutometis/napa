@@ -1,4 +1,4 @@
-(ns napa.compute-md5s
+(ns how.compute-md5s
   (:import (mapreduce.tasks ComputeSortedUniqueMd5s))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

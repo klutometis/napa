@@ -1,4 +1,4 @@
-(ns napa.write-uuid-retention
+(ns hew.write-uuid-retention
   (:import (mapreduce.tasks.uuidretention WriteUuidRetentionMappingToSequenceFile))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

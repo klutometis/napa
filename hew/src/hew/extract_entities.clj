@@ -1,4 +1,4 @@
-(ns napa.extract-entities
+(ns hew.extract-entities
   (:import (mapreduce.tasks ExtractEntities))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

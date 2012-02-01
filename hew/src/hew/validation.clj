@@ -1,4 +1,4 @@
-(ns napa.validation
+(ns hew.validation
   (:import (mapreduce.tasks ConvertValidationJsonResultsToTab))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

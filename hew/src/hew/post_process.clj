@@ -1,4 +1,4 @@
-(ns napa.post-process
+(ns hew.post-process
   (:import (mapreduce.tasks PostProcessExtractedData))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

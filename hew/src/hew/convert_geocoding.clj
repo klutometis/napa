@@ -1,4 +1,4 @@
-(ns napa.convert-geocoding
+(ns hew.convert-geocoding
   (:import (mapreduce.tasks ConvertGeocodingResultsToTab))
   (:gen-class
    :implements [vineyard.hadoop.MapReduceJobCreator]))

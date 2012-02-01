@@ -1,4 +1,4 @@
-(ns napa.core
+(ns hew.core
   (:import (mapreduce.tasks ConvertGeocodingResultsToTab)
            (vineyard.hadoop MapReduceJobCreator
                             MapReduceTask)

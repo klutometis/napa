@@ -54,11 +54,6 @@
       {:child->parents (persistent! child->parents)
        :parent->children (persistent! parent->children)})))
 
-(defn task-table [tasks]
-  (reduce (fn [table task] (assoc table task (eval task)))
-          {}
-          tasks))
-
 (defn build-job [parent->children root tasks]
   (let [queue (atom (clojure.lang.PersistentQueue/EMPTY))
         visited (transient #{})]
@@ -77,12 +72,17 @@
                 (swap! queue (fn [queue] (conj queue child)))))))))
     (get tasks root)))
 
-(def ^:dynamic *default-host* "task07")
-(def ^:dynamic *default-port* 8081)
-(def ^:dynamic *default-resource* "test")
+(defn task-table [tasks]
+  (reduce (fn [table task] (assoc table task (eval task)))
+          {}
+          tasks))
 
 (defn tree->tasks [tree]
   (distinct (flatten tree)))
+
+(def ^:dynamic *default-host* "task07")
+(def ^:dynamic *default-port* 8081)
+(def ^:dynamic *default-resource* "test")
 
 (defn run-tree [tree root]
   (let [{:keys [child->parents parent->children]} (tree->graph tree)
